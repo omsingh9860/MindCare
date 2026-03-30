@@ -1,0 +1,96 @@
+import type { Response } from "express";
+import type { AuthRequest } from "../middleware/auth.middleware";
+import { JournalEntry } from "../models/JournalEntry";
+
+import { assessRisk } from "../services/riskDetector";
+import mongoose from "mongoose";
+
+
+
+export async function deleteEntry(req: AuthRequest, res: Response) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid entry id" });
+    }
+
+    const deleted = await JournalEntry.findOneAndDelete({
+      _id: id,
+      userId: req.userId,
+    });
+
+    if (!deleted) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    return res.json({ message: "Entry deleted" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function createEntry(req: AuthRequest, res: Response) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
+    
+    const { title, content } = req.body as { title?: string; content?: string };
+    const risk = assessRisk(`${title}\n\n${content}`);
+    if (!title?.trim() || !content?.trim()) {
+      return res.status(400).json({ message: "title and content are required" });
+    }
+
+    const entry = await JournalEntry.create({
+  userId: req.userId,
+  title: title.trim(),
+  content: content.trim(),
+  riskLevel: risk.riskLevel,
+  riskReasons: risk.reasons,
+  riskAssessedAt: new Date(),
+});
+
+    return res.status(201).json({
+      message: "Entry saved",
+      risk: { level: entry.riskLevel, reasons: entry.riskReasons },
+      entry: {
+        id: entry._id,
+        title: entry.title,
+        content: entry.content,
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+export async function listEntries(req: AuthRequest, res: Response) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const entries = await JournalEntry.find({ userId: req.userId })
+      .sort({ createdAt: -1 })
+      .select("_id title content createdAt updatedAt");
+
+    return res.json({
+      entries: entries.map((e) => ({
+        id: e._id,
+        title: e.title,
+        content: e.content,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+

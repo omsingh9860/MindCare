@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Dark theme - charcoal backgrounds */
+    --background: 222 20% 8%;
+    --foreground: 180 5% 98%;
+
+    --card: 222 18% 12%;
+    --card-foreground: 180 5% 98%;
+
+    --popover: 222 18% 12%;
+    --popover-foreground: 180 5% 98%;
+
+    /* Teal accent - primary */
+    --primary: 173 80% 40%;
+    --primary-foreground: 180 5% 98%;
+
+    /* Soft blue - secondary */
+    --secondary: 213 94% 68%;
+    --secondary-foreground: 222 20% 8%;
+
+    /* Mint - accent */
+    --accent: 158 64% 62%;
+    --accent-foreground: 222 20% 8%;
+
+    --muted: 222 15% 18%;
+    --muted-foreground: 180 5% 65%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 180 5% 98%;
+
+    --border: 222 15% 20%;
+    --input: 222 15% 20%;
+    --ring: 173 80% 40%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar colors */
+    --sidebar-background: 222 18% 10%;
+    --sidebar-foreground: 180 5% 95%;
+    --sidebar-primary: 173 80% 40%;
+    --sidebar-primary-foreground: 180 5% 98%;
+    --sidebar-accent: 222 15% 18%;
+    --sidebar-accent-foreground: 180 5% 95%;
+    --sidebar-border: 222 15% 15%;
+    --sidebar-ring: 173 80% 40%;
+
+    /* Gradient tokens */
+    --gradient-hero: linear-gradient(135deg, hsl(222 20% 8%) 0%, hsl(222 25% 12%) 50%, hsl(173 80% 10%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(222 18% 12% / 0.8) 0%, hsl(222 18% 10% / 0.6) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(173 80% 40%) 0%, hsl(158 64% 62%) 100%);
+    --gradient-glow: radial-gradient(circle at 50% 0%, hsl(173 80% 40% / 0.15) 0%, transparent 50%);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply backdrop-blur-lg bg-card/50 border border-border/50 shadow-xl;
+  }
+  
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  
+  .gradient-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .hover-lift {
+    @apply transition-transform duration-300 hover:-translate-y-1;
+  }
+  
+  .smooth-transition {
+    @apply transition-all duration-300 ease-in-out;
+  }
+}

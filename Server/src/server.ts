@@ -33,7 +33,6 @@ app.get("/health", (_req, res) => {
 // Routes (mount ALL routes before listening)
 app.use("/api/auth", authRoutes);
 
-// your protected routes (e.g. /api/me) — keep before feature routes if it contains /me
 app.use("/api", protectedRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/dashboard", dashboardRoutes);

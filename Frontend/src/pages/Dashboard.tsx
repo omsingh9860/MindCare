@@ -5,6 +5,9 @@ import {
   Brain,
   TrendingUp,
   Lightbulb,
+  Trophy,
+  BarChart2,
+  Crown,
 } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -92,6 +95,9 @@ const Dashboard = () => {
     { icon: BookOpen, label: "Journal", path: "/journal" },
     { icon: Brain, label: "Meditation", path: "/meditation" },
     { icon: Lightbulb, label: "Tips", path: "/tips" },
+    { icon: Trophy, label: "Achievements", path: "/achievements" },
+    { icon: BarChart2, label: "Analytics", path: "/analytics" },
+    { icon: Crown, label: "Leaderboard", path: "/leaderboard" },
   ];
 
   const moodScoreDisplay = loadingSummary ? "..." : summary?.latestMoodScore ?? "--";

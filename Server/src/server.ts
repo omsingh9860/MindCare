@@ -17,6 +17,9 @@ import meditationRoutes from "./routes/meditation.routes";
 import contactsRoutes from "./routes/contacts.routes";
 import crisisRoutes from "./routes/crisis.routes";
 import profileRoutes from "./routes/profile.routes";
+import achievementRoutes from "./routes/achievement.routes";
+import leaderboardRoutes from "./routes/leaderboard.routes";
+import analyticsRoutes from "./routes/analytics.routes";
 
 const app = express();
 
@@ -46,6 +49,9 @@ app.use("/api/journal", journalRoutes);
 app.use("/api/meditation", meditationRoutes);
 app.use("/api/contacts", contactsRoutes);
 app.use("/api/crisis", crisisRoutes);
+app.use("/api/achievements", achievementRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
 

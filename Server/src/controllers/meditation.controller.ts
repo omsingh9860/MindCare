@@ -1,6 +1,7 @@
 import type { Response } from "express";
 import type { AuthRequest } from "../middleware/auth.middleware";
 import { MeditationSession } from "../models/MeditationSession";
+import { processMeditationAchievements } from "../services/achievementService";
 
 export async function logMeditationSession(req: AuthRequest, res: Response) {
   try {
@@ -17,6 +18,11 @@ export async function logMeditationSession(req: AuthRequest, res: Response) {
       title: title.trim(),
       minutes,
     });
+
+    // Fire and forget — process achievements without blocking the response
+    processMeditationAchievements(req.userId).catch((err) =>
+      console.error("Achievement processing error:", err)
+    );
 
     return res.status(201).json({
       message: "Meditation logged",

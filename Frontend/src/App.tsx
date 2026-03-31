@@ -13,6 +13,9 @@ import MeditationPage from "@/pages/Meditation";
 import TipsPage from "@/pages/Tips";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import AchievementsPage from "@/pages/Achievements";
+import AnalyticsPage from "@/pages/Analytics";
+import LeaderboardPage from "@/pages/Leaderboard";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -39,6 +42,9 @@ export default function App() {
         <Route path="/mood-test" element={<MoodTestPage />} />
         <Route path="/meditation" element={<MeditationPage />} />
         <Route path="/tips" element={<TipsPage />} />
+        <Route path="/achievements" element={<AchievementsPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/leaderboard" element={<LeaderboardPage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

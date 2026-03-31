@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import {
   getMoodTrends,
   getTriggers,
   getInsights,
   getComparison,
   exportReport,
-} from "../controllers/analytics.controller";
+} from "../controllers/analytics.controller.js";
 
 const router = Router();
 

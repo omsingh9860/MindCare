@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
-import { getMeditationSummary, logMeditationSession } from "../controllers/meditation.controller";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import { getMeditationSummary, logMeditationSession } from "../controllers/meditation.controller.js";
 
 const router = Router();
 

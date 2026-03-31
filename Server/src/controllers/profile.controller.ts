@@ -1,6 +1,6 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
-import { User } from "../models/User";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { User } from "../models/User.js";
 
 export async function getProfile(req: AuthRequest, res: Response) {
   if (!req.userId) return res.status(401).json({ message: "Unauthorized" });

@@ -1,8 +1,8 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
-import { MoodAssessment } from "../models/MoodAssessment";
-import { JournalEntry } from "../models/JournalEntry";
-import { MeditationSession } from "../models/MeditationSession";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { MoodAssessment } from "../models/MoodAssessment.js";
+import { JournalEntry } from "../models/JournalEntry.js";
+import { MeditationSession } from "../models/MeditationSession.js";
 
 
 

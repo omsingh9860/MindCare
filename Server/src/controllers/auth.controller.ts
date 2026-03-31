@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { User } from "../models/User";
-import type { AuthRequest } from "../middleware/auth.middleware";
+import { User } from "../models/User.js";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
 
 function signToken(userId: string) {
   const secret = process.env.JWT_SECRET;

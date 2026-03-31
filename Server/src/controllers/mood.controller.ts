@@ -1,7 +1,7 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
-import { MoodAssessment, type MoodAssessmentDoc } from "../models/MoodAssessment";
-import { processMoodAchievements } from "../services/achievementService";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { MoodAssessment, type MoodAssessmentDoc } from "../models/MoodAssessment.js";
+import { processMoodAchievements } from "../services/achievementService.js";
 
 export async function createMoodAssessment(req: AuthRequest, res: Response) {
   try {

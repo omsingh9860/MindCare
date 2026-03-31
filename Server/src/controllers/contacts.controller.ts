@@ -1,6 +1,6 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
-import { TrustedContact } from "../models/TrustedContact";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { TrustedContact } from "../models/TrustedContact.js";
 
 const MAX_CONTACTS = 3;
 

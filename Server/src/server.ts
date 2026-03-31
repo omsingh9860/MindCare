@@ -5,22 +5,22 @@ import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 
-import { connectDB } from "./config/db";
-import { startCrisisAlertWorker } from "./workers/crisisAlertWorker";
+import { connectDB } from "./config/db.js";
+import { startCrisisAlertWorker } from "./workers/crisisAlertWorker.js";
 
-import testEmailRoutes from "./routes/test-email.routes";
-import authRoutes from "./routes/auth.routes";
-import protectedRoutes from "./routes/protected.routes";
-import journalRoutes from "./routes/journal.routes";
-import moodRoutes from "./routes/mood.routes";
-import dashboardRoutes from "./routes/dashboard.routes";
-import meditationRoutes from "./routes/meditation.routes";
-import contactsRoutes from "./routes/contacts.routes";
-import crisisRoutes from "./routes/crisis.routes";
-import profileRoutes from "./routes/profile.routes";
-import achievementRoutes from "./routes/achievement.routes";
-import leaderboardRoutes from "./routes/leaderboard.routes";
-import analyticsRoutes from "./routes/analytics.routes";
+import testEmailRoutes from "./routes/test-email.routes.js";
+import authRoutes from "./routes/auth.routes.js";
+import protectedRoutes from "./routes/protected.routes.js";
+import journalRoutes from "./routes/journal.routes.js";
+import moodRoutes from "./routes/mood.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import meditationRoutes from "./routes/meditation.routes.js";
+import contactsRoutes from "./routes/contacts.routes.js";
+import crisisRoutes from "./routes/crisis.routes.js";
+import profileRoutes from "./routes/profile.routes.js";
+import achievementRoutes from "./routes/achievement.routes.js";
+import leaderboardRoutes from "./routes/leaderboard.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 
 const app = express();
 

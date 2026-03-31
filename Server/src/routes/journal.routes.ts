@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
-import { createEntry, deleteEntry, listEntries } from "../controllers/journal.controller";
+import { requireAuth } from "../middleware/auth.middleware.js";
+import { createEntry, deleteEntry, listEntries } from "../controllers/journal.controller.js";
 
 const router = Router();
 

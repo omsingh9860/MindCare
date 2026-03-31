@@ -1,12 +1,12 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
 import mongoose from "mongoose";
-import { MoodAssessment } from "../models/MoodAssessment";
-import { JournalEntry } from "../models/JournalEntry";
-import { MeditationSession } from "../models/MeditationSession";
-import { Achievement } from "../models/Achievement";
-import { UserStreak } from "../models/UserStreak";
-import { AnalyticsCache } from "../models/AnalyticsCache";
+import { MoodAssessment } from "../models/MoodAssessment.js";
+import { JournalEntry } from "../models/JournalEntry.js";
+import { MeditationSession } from "../models/MeditationSession.js";
+import { Achievement } from "../models/Achievement.js";
+import { UserStreak } from "../models/UserStreak.js";
+import { AnalyticsCache } from "../models/AnalyticsCache.js";
 
 const MOOD_SCORE_MAP: Record<string, number> = {
   "Very Good": 9,

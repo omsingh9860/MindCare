@@ -1,8 +1,8 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
 import mongoose from "mongoose";
-import { Achievement, BADGE_CATALOG, type BadgeType } from "../models/Achievement";
-import { UserStreak } from "../models/UserStreak";
+import { Achievement, BADGE_CATALOG, type BadgeType } from "../models/Achievement.js";
+import { UserStreak } from "../models/UserStreak.js";
 
 export async function getUserAchievements(req: AuthRequest, res: Response) {
   try {
@@ -15,7 +15,7 @@ export async function getUserAchievements(req: AuthRequest, res: Response) {
 
     const allBadges = Object.entries(BADGE_CATALOG).map(([badge, info]) => ({
       badge,
-      ...info,
+      ...(info as Record<string, unknown>),
       unlocked: unlockedBadges.has(badge),
       unlockedAt: unlocked.find((a) => a.badge === badge)?.unlockedAt ?? null,
     }));

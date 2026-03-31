@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import {
   getLeaderboard,
   getUserLeaderboardStatus,
   toggleLeaderboardVisibility,
-} from "../controllers/leaderboard.controller";
+} from "../controllers/leaderboard.controller.js";
 
 const router = Router();
 

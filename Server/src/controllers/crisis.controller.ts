@@ -1,10 +1,10 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
-import { CrisisSettings } from "../models/CrisisSettings";
-import { TrustedContact } from "../models/TrustedContact";
-import { sendCrisisEmail } from "../services/mailer";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { CrisisSettings } from "../models/CrisisSettings.js";
+import { TrustedContact } from "../models/TrustedContact.js";
+import { sendCrisisEmail } from "../services/mailer.js";
 
-import { PendingCrisisAlert } from "../models/PendingCrisisAlert";
+import { PendingCrisisAlert } from "../models/PendingCrisisAlert.js";
 
 export async function startAutoAlert(req: AuthRequest, res: Response) {
   if (!req.userId) return res.status(401).json({ message: "Unauthorized" });

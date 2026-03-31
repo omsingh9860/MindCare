@@ -1,6 +1,6 @@
-import { PendingCrisisAlert } from "../models/PendingCrisisAlert";
-import { TrustedContact } from "../models/TrustedContact";
-import { sendCrisisEmail } from "../services/mailer";
+import { PendingCrisisAlert } from "../models/PendingCrisisAlert.js";
+import { TrustedContact } from "../models/TrustedContact.js";
+import { sendCrisisEmail } from "../services/mailer.js";
 
 export function startCrisisAlertWorker() {
   setInterval(async () => {

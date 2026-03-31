@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import { Achievement, BADGE_CATALOG, type BadgeType } from "../models/Achievement";
-import { UserStreak } from "../models/UserStreak";
-import { Leaderboard } from "../models/Leaderboard";
-import { MeditationSession } from "../models/MeditationSession";
-import { JournalEntry } from "../models/JournalEntry";
-import { MoodAssessment } from "../models/MoodAssessment";
+import { Achievement, BADGE_CATALOG, type BadgeType } from "../models/Achievement.js";
+import { UserStreak } from "../models/UserStreak.js";
+import { Leaderboard } from "../models/Leaderboard.js";
+import { MeditationSession } from "../models/MeditationSession.js";
+import { JournalEntry } from "../models/JournalEntry.js";
+import { MoodAssessment } from "../models/MoodAssessment.js";
 
 /**
  * Generate a fun anonymized alias from a userId for privacy-first leaderboard

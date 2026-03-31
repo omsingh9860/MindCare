@@ -1,7 +1,7 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
-import { MeditationSession } from "../models/MeditationSession";
-import { processMeditationAchievements } from "../services/achievementService";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { MeditationSession } from "../models/MeditationSession.js";
+import { processMeditationAchievements } from "../services/achievementService.js";
 
 export async function logMeditationSession(req: AuthRequest, res: Response) {
   try {

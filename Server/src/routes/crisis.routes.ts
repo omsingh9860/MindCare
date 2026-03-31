@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import {
   getSettings,
   sendAlert,
   updateSettings,
   startAutoAlert,
   cancelAutoAlert,
-} from "../controllers/crisis.controller";
+} from "../controllers/crisis.controller.js";
 
 const router = Router();
 

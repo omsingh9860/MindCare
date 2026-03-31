@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { requireAuth } from "../middleware/auth.middleware";
+import { requireAuth } from "../middleware/auth.middleware.js";
 import {
   getUserAchievements,
   getBadgesCatalog,
   unlockAchievement,
   getCurrentStreaks,
-} from "../controllers/achievement.controller";
+} from "../controllers/achievement.controller.js";
 
 const router = Router();
 

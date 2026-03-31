@@ -1,8 +1,8 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
 import mongoose from "mongoose";
-import { Leaderboard } from "../models/Leaderboard";
-import { generateAlias } from "../services/achievementService";
+import { Leaderboard } from "../models/Leaderboard.js";
+import { generateAlias } from "../services/achievementService.js";
 
 export async function getLeaderboard(_req: AuthRequest, res: Response) {
   try {

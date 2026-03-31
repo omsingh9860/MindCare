@@ -1,8 +1,8 @@
 import type { Response } from "express";
-import type { AuthRequest } from "../middleware/auth.middleware";
-import { JournalEntry } from "../models/JournalEntry";
-import { assessRisk } from "../services/riskDetector";
-import { processJournalAchievements } from "../services/achievementService";
+import type { AuthRequest } from "../middleware/auth.middleware.js";
+import { JournalEntry } from "../models/JournalEntry.js";
+import { assessRisk } from "../services/riskDetector.js";
+import { processJournalAchievements } from "../services/achievementService.js";
 import mongoose from "mongoose";
 
 

@@ -80,7 +80,7 @@ export async function getMoodTrends(req: AuthRequest, res: Response) {
 
     const cacheKey = `mood-trends-${period}`;
 
-    const data = await getCachedOrCompute(req.userId, cacheKey, 30, async () => {
+    const data = await getCachedOrCompute(req.userId, cacheKey, 0, async () => {
       const oid = new mongoose.Types.ObjectId(req.userId!);
       const since = getDaysAgo(period);
 
@@ -162,7 +162,7 @@ export async function getTriggers(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
 
-    const data = await getCachedOrCompute(req.userId, "triggers", 60, async () => {
+    const data = await getCachedOrCompute(req.userId, "triggers", 0, async () => {
       const oid = new mongoose.Types.ObjectId(req.userId!);
       const since = getDaysAgo(90);
 

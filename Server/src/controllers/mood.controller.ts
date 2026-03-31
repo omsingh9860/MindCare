@@ -1,6 +1,7 @@
 import type { Response } from "express";
 import type { AuthRequest } from "../middleware/auth.middleware";
 import { MoodAssessment, type MoodAssessmentDoc } from "../models/MoodAssessment";
+import { processMoodAchievements } from "../services/achievementService";
 
 export async function createMoodAssessment(req: AuthRequest, res: Response) {
   try {
@@ -20,6 +21,11 @@ export async function createMoodAssessment(req: AuthRequest, res: Response) {
       answers,
       notes: notes?.trim() || "",
     });
+
+    // Fire and forget — process achievements without blocking the response
+    processMoodAchievements(req.userId).catch((err) =>
+      console.error("Achievement processing error:", err)
+    );
 
     return res.status(201).json({
       message: "Mood assessment saved",

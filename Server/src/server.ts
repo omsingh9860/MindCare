@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 
 import { connectDB } from "./config/db";
 import { startCrisisAlertWorker } from "./workers/crisisAlertWorker";
@@ -17,6 +18,9 @@ import meditationRoutes from "./routes/meditation.routes";
 import contactsRoutes from "./routes/contacts.routes";
 import crisisRoutes from "./routes/crisis.routes";
 import profileRoutes from "./routes/profile.routes";
+import achievementRoutes from "./routes/achievement.routes";
+import leaderboardRoutes from "./routes/leaderboard.routes";
+import analyticsRoutes from "./routes/analytics.routes";
 
 const app = express();
 
@@ -28,6 +32,16 @@ app.use(
 );
 
 app.use(express.json());
+
+// General API rate limiter: 200 requests per 15 minutes per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." },
+});
+app.use("/api", apiLimiter);
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, message: "Server is healthy" });
@@ -46,6 +60,9 @@ app.use("/api/journal", journalRoutes);
 app.use("/api/meditation", meditationRoutes);
 app.use("/api/contacts", contactsRoutes);
 app.use("/api/crisis", crisisRoutes);
+app.use("/api/achievements", achievementRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
 

@@ -1,8 +1,8 @@
 import type { Response } from "express";
 import type { AuthRequest } from "../middleware/auth.middleware";
 import { JournalEntry } from "../models/JournalEntry";
-
 import { assessRisk } from "../services/riskDetector";
+import { processJournalAchievements } from "../services/achievementService";
 import mongoose from "mongoose";
 
 
@@ -52,6 +52,11 @@ export async function createEntry(req: AuthRequest, res: Response) {
   riskReasons: risk.reasons,
   riskAssessedAt: new Date(),
 });
+
+    // Fire and forget — process achievements without blocking the response
+    processJournalAchievements(req.userId).catch((err) =>
+      console.error("Achievement processing error:", err)
+    );
 
     return res.status(201).json({
       message: "Entry saved",

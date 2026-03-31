@@ -23,28 +23,28 @@ export async function startAutoAlert(req: AuthRequest, res: Response) {
   }
 
   const cooldownMinutes = 10;
-const cutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
+  const cutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
 
-const lastSent = await PendingCrisisAlert.findOne({
-  userId: req.userId,
-  status: "sent",
-  createdAt: { $gte: cutoff },
-}).sort({ createdAt: -1 });
+  const lastSent = await PendingCrisisAlert.findOne({
+    userId: req.userId,
+    status: "sent",
+    createdAt: { $gte: cutoff },
+  } as any).sort({ createdAt: -1 });
 
-if (lastSent) {
-  const sentAt = lastSent.createdAt as Date;
-  const retryAt = new Date(sentAt.getTime() + cooldownMinutes * 60 * 1000);
-  const retryAfterSeconds = Math.max(
-    1,
-    Math.ceil((retryAt.getTime() - Date.now()) / 1000)
-  );
+  if (lastSent) {
+    const sentAt = lastSent.createdAt as Date;
+    const retryAt = new Date(sentAt.getTime() + cooldownMinutes * 60 * 1000);
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((retryAt.getTime() - Date.now()) / 1000)
+    );
 
-  return res.status(429).json({
-    message: `Cooldown active. Try again in ${retryAfterSeconds}s.`,
-    retryAfterSeconds,
-    retryAt,
-  });
-}
+    return res.status(429).json({
+      message: `Cooldown active. Try again in ${retryAfterSeconds}s.`,
+      retryAfterSeconds,
+      retryAt,
+    });
+  }
 
   const { userName } = req.body as { userName?: string };
 
@@ -81,7 +81,11 @@ export async function cancelAutoAlert(req: AuthRequest, res: Response) {
 
   const { alertId } = req.params;
 
-  const alert = await PendingCrisisAlert.findOne({ _id: alertId, userId: req.userId });
+  const alert = await PendingCrisisAlert.findOne({ 
+    _id: alertId, 
+    userId: req.userId 
+  } as any);
+  
   if (!alert) return res.status(404).json({ message: "Alert not found" });
 
   if (alert.status === "sent") {

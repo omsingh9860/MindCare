@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { type InferSchemaType, type Model } from "mongoose";
 
 const PendingCrisisAlertSchema = new mongoose.Schema(
   {
@@ -20,6 +20,8 @@ const PendingCrisisAlertSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export const PendingCrisisAlert =
-  mongoose.models.PendingCrisisAlert ||
-  mongoose.model("PendingCrisisAlert", PendingCrisisAlertSchema);
+export type PendingCrisisAlertDoc = InferSchemaType<typeof PendingCrisisAlertSchema>;
+
+export const PendingCrisisAlert: Model<PendingCrisisAlertDoc> =
+  (mongoose.models.PendingCrisisAlert as Model<PendingCrisisAlertDoc>) ||
+  mongoose.model<PendingCrisisAlertDoc>("PendingCrisisAlert", PendingCrisisAlertSchema);

@@ -4,20 +4,19 @@ export type CrisisEmailParams = {
   userName: string;
   triggeredAt: Date | string | number;
   timezone?: string;
-  delaySeconds: number; // you want 30 sec
+  delaySeconds: number;
 };
 
-const emailUser = process.env.EMAIL_USER;
-const emailPass = process.env.EMAIL_PASS;
-
+// ✅ support BOTH naming styles
+const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+const emailPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;  
 if (!emailUser || !emailPass) {
-  // This makes misconfiguration obvious in dev logs
   console.warn(
-    "[mailer] EMAIL_USER / EMAIL_PASS not set. Emails will fail until configured."
+    
+    "[mailer] SMTP_USER/SMTP_PASS (or EMAIL_USER/EMAIL_PASS) not set. Emails will fail until configured."
   );
 }
 
-// Gmail transporter (App Password recommended)
 export const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -25,6 +24,7 @@ export const transporter = nodemailer.createTransport({
     pass: emailPass,
   },
 });
+
 
 /**
  * Plain text fallback (recommended even if you mainly use HTML)
@@ -143,10 +143,29 @@ export function buildCrisisAlertEmailSubject(userName: string) {
  * - Sends HTML + text fallback
  * - Does NOT include any private journal content
  */
-export async function sendCrisisEmail(to: string, params: CrisisEmailParams) {
-  if (!emailUser) throw new Error("EMAIL_USER is not configured");
-  if (!emailPass) throw new Error("EMAIL_PASS is not configured");
+export async function sendCrisisEmail(
+  to: string,
+  paramsOrSubject: CrisisEmailParams | string,
+  maybeText?: string
+) {
+  if (!emailUser) throw new Error("SMTP_USER/EMAIL_USER is not configured");
+  if (!emailPass) throw new Error("SMTP_PASS/EMAIL_PASS is not configured");
 
+  // OLD style: (to, subject, text)
+  if (typeof paramsOrSubject === "string") {
+    const subject = paramsOrSubject;
+    const text = maybeText || "";
+    await transporter.sendMail({
+      from: `"MindCare" <${emailUser}>`,
+      to,
+      subject,
+      text,
+    });
+    return;
+  }
+
+  // NEW style: (to, params)
+  const params = paramsOrSubject;
   await transporter.sendMail({
     from: `"MindCare" <${emailUser}>`,
     to,

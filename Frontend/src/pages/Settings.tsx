@@ -22,6 +22,9 @@ import {
   type CrisisSettings,
 } from "@/lib/crisis";
 
+import { SendManualAlertButton } from "@/components/SendManualAlertButton";
+import CrisisAutoTestCard from "@/components/CrisisAutoTestCard";
+
 const Settings = () => {
   const { toast } = useToast();
 
@@ -300,6 +303,7 @@ const Settings = () => {
                       out.
                     </div>
                   </div>
+
                   <input
                     type="checkbox"
                     checked={settings.enabled}
@@ -324,6 +328,7 @@ const Settings = () => {
                         onChange={() =>
                           setSettings((p) => ({ ...p, mode: "manual" }))
                         }
+                        disabled={!settings.enabled}
                       />
                       Manual (you choose to send)
                     </label>
@@ -336,8 +341,9 @@ const Settings = () => {
                         onChange={() =>
                           setSettings((p) => ({ ...p, mode: "auto" }))
                         }
+                        disabled={!settings.enabled}
                       />
-                      Automatic (30s countdown + cancel)
+                      Automatic (countdown + cancel)
                     </label>
                   </div>
                 </div>
@@ -356,7 +362,7 @@ const Settings = () => {
                         delaySeconds: Number(e.target.value || 30),
                       }))
                     }
-                    disabled={settings.mode !== "auto"}
+                    disabled={!settings.enabled || settings.mode !== "auto"}
                   />
                   <p className="text-xs text-muted-foreground">
                     Auto mode triggers only for high-risk entries. You can cancel.
@@ -366,6 +372,26 @@ const Settings = () => {
                 <Button onClick={handleSaveSettings} disabled={savingSettings}>
                   {savingSettings ? "Saving..." : "Save Settings"}
                 </Button>
+
+                {/* Test UI (shows only when enabled) */}
+                {settings.enabled ? (
+                  settings.mode === "manual" ? (
+                    <div className="pt-2 space-y-2">
+                      <div className="text-sm text-muted-foreground">
+                        Manual mode: alerts only send when you choose to send them.
+                      </div>
+                      <SendManualAlertButton userName={profile.name} />
+                    </div>
+                  ) : (
+                    <div className="pt-2">
+                      <CrisisAutoTestCard userName={profile.name} />
+                    </div>
+                  )
+                ) : (
+                  <p className="text-sm text-muted-foreground pt-2">
+                    Enable crisis alerts to test manual/auto alerts.
+                  </p>
+                )}
 
                 <p className="text-xs text-muted-foreground">
                   Note: MindCare is not a crisis service. If you’re in immediate
@@ -445,10 +471,7 @@ const Settings = () => {
                           >
                             Cancel
                           </Button>
-                          <Button
-                            onClick={handleUpdateContact}
-                            disabled={editing}
-                          >
+                          <Button onClick={handleUpdateContact} disabled={editing}>
                             {editing ? "Saving..." : "Save"}
                           </Button>
                         </>

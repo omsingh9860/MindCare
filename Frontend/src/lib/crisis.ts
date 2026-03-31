@@ -20,3 +20,18 @@ export async function sendCrisisAlert(userName?: string, userEmail?: string) {
   const res = await api.post("/api/crisis/alert", { userName, userEmail });
   return res.data as { message: string; sentTo: string[] };
 }
+
+export async function startCrisisAutoAlert(userName?: string) {
+  const res = await api.post("/api/crisis/alert/start", { userName });
+  return res.data as {
+    message: string;
+    alertId: string;
+    sendAt: string;
+    delaySeconds: number;
+  };
+}
+
+export async function cancelCrisisAutoAlert(alertId: string) {
+  const res = await api.post(`/api/crisis/alert/cancel/${alertId}`);
+  return res.data as { message: string; alertId: string };
+}

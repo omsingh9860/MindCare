@@ -53,20 +53,22 @@ export async function unlockAchievement(req: AuthRequest, res: Response) {
 
     const { badge } = req.body as { badge?: string };
 
-    if (!badge || !(badge in BADGE_CATALOG)) {
+    const validBadgeTypes = Object.keys(BADGE_CATALOG) as BadgeType[];
+    const validatedBadge = validBadgeTypes.find((b) => b === badge);
+    if (!validatedBadge) {
       return res.status(400).json({ message: "Invalid badge type" });
     }
 
     const oid = new mongoose.Types.ObjectId(req.userId);
-    const existing = await Achievement.findOne({ userId: oid, badge });
+    const existing = await Achievement.findOne({ userId: oid, badge: validatedBadge });
     if (existing) {
       return res.status(409).json({ message: "Badge already unlocked" });
     }
 
-    const catalog = BADGE_CATALOG[badge as BadgeType];
+    const catalog = BADGE_CATALOG[validatedBadge];
     const doc = await Achievement.create({
       userId: oid,
-      badge,
+      badge: validatedBadge,
       unlockedAt: new Date(),
       points: catalog.points,
     });

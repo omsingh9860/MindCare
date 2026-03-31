@@ -13,7 +13,14 @@ const AnalyticsCacheSchema = new Schema<IAnalyticsCache>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     cacheKey: { type: String, required: true },
     data: { type: Schema.Types.Mixed, required: true },
-    expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
+    expiresAt: {
+      type: Date,
+      required: true,
+      // TTL index: MongoDB removes documents automatically once the current time
+      // passes the 'expiresAt' field. expireAfterSeconds: 0 means expiry happens
+      // exactly at the time specified in expiresAt (no additional offset).
+      index: { expireAfterSeconds: 0 },
+    },
   },
   { timestamps: true }
 );

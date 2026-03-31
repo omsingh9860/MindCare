@@ -4,6 +4,7 @@ import { UserStreak } from "../models/UserStreak";
 import { Leaderboard } from "../models/Leaderboard";
 import { MeditationSession } from "../models/MeditationSession";
 import { JournalEntry } from "../models/JournalEntry";
+import { MoodAssessment } from "../models/MoodAssessment";
 
 /**
  * Generate a fun anonymized alias from a userId for privacy-first leaderboard
@@ -27,8 +28,7 @@ async function upsertLeaderboard(userId: string): Promise<void> {
   const [meditationCount, journalCount, moodCount] = await Promise.all([
     MeditationSession.countDocuments({ userId: oid }),
     JournalEntry.countDocuments({ userId: oid }),
-    // We'll just use achievements to count moods since MoodAssessment model is flexible
-    Achievement.countDocuments({ userId: oid, badge: { $in: ["checkin_7_streak", "checkin_30_streak"] } }),
+    MoodAssessment.countDocuments({ userId: oid }),
   ]);
 
   const achievementDocs = await Achievement.find({ userId: oid });

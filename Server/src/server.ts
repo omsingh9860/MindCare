@@ -3,6 +3,7 @@ dotenv.config();
 
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 
 import { connectDB } from "./config/db";
 import { startCrisisAlertWorker } from "./workers/crisisAlertWorker";
@@ -31,6 +32,16 @@ app.use(
 );
 
 app.use(express.json());
+
+// General API rate limiter: 200 requests per 15 minutes per IP
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many requests, please try again later." },
+});
+app.use("/api", apiLimiter);
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true, message: "Server is healthy" });

@@ -303,11 +303,7 @@ const AnalyticsPage = () => {
                           nameKey="emotion"
                           cx="50%"
                           cy="50%"
-                          outerRadius={80}
-                          label={({ emotion, percent }) =>
-                            `${emotion} ${Math.round((percent ?? 0) * 100)}%`
-                          }
-                          labelLine={false}
+                          outerRadius={70}
                         >
                           {trends.emotionDistribution.map((_, index) => (
                             <Cell
@@ -316,7 +312,14 @@ const AnalyticsPage = () => {
                             />
                           ))}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip formatter={(value, name) => [value, name]} />
+                        <Legend
+                          layout="vertical"
+                          align="right"
+                          verticalAlign="middle"
+                          iconSize={10}
+                          wrapperStyle={{ fontSize: "11px", maxWidth: "120px" }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>

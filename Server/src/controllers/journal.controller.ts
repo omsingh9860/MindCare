@@ -51,6 +51,7 @@ export async function createEntry(req: AuthRequest, res: Response) {
   riskLevel: risk.riskLevel,
   riskReasons: risk.reasons,
   riskAssessedAt: new Date(),
+  ml: { status: "pending", source: "journal" },
 });
 
     // Fire and forget — process achievements without blocking the response
@@ -65,6 +66,7 @@ export async function createEntry(req: AuthRequest, res: Response) {
         id: entry._id,
         title: entry.title,
         content: entry.content,
+        ml: entry.ml,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
       },
@@ -81,13 +83,14 @@ export async function listEntries(req: AuthRequest, res: Response) {
 
     const entries = await JournalEntry.find({ userId: req.userId })
       .sort({ createdAt: -1 })
-      .select("_id title content createdAt updatedAt");
+      .select("_id title content ml createdAt updatedAt");
 
     return res.json({
       entries: entries.map((e) => ({
         id: e._id,
         title: e.title,
         content: e.content,
+        ml: e.ml,
         createdAt: e.createdAt,
         updatedAt: e.updatedAt,
       })),
@@ -98,4 +101,34 @@ export async function listEntries(req: AuthRequest, res: Response) {
   }
 }
 
+export async function markJournalForAnalysis(req: AuthRequest, res: Response) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
 
+    const rawId = req.params.id;
+    const id = Array.isArray(rawId) ? rawId[0] : rawId;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid entry id" });
+    }
+
+    const entry = await JournalEntry.findOneAndUpdate(
+      { _id: id, userId: req.userId },
+      {
+        $set: {
+          ml: { status: "pending", source: "journal" },
+        },
+      },
+      { new: true }
+    );
+
+    if (!entry) {
+      return res.status(404).json({ message: "Entry not found" });
+    }
+
+    return res.json({ message: "Marked for analysis", ml: entry.ml });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}

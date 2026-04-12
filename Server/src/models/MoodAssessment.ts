@@ -1,20 +1,7 @@
 import mongoose, { Schema } from "mongoose";
+import { MlOutput, MlOutputSchema } from "./MlOutput.js";
 
-export type MlOutput = {
-  status: "pending" | "completed" | "failed";
-  source?: "journal" | "assessment";
-  inputHash?: string;
-  modelVersion?: string;
-  primaryEmotion?: string;
-  secondaryEmotion?: string;
-  confidence?: number;
-  score?: number;
-  emotionType?: string;
-  raw?: Record<string, unknown>;
-  createdAt?: Date;
-  updatedAt?: Date;
-  error?: string;
-};
+export type { MlOutput };
 
 export type MoodAssessmentDoc = mongoose.Document & {
   userId: mongoose.Types.ObjectId;
@@ -24,23 +11,6 @@ export type MoodAssessmentDoc = mongoose.Document & {
   createdAt: Date;
   updatedAt: Date;
 };
-
-const MlOutputSchema = new Schema(
-  {
-    status: { type: String, enum: ["pending", "completed", "failed"], default: "pending" },
-    source: { type: String, enum: ["journal", "assessment"] },
-    inputHash: { type: String },
-    modelVersion: { type: String },
-    primaryEmotion: { type: String },
-    secondaryEmotion: { type: String },
-    confidence: { type: Number },
-    score: { type: Number },
-    emotionType: { type: String },
-    raw: { type: Schema.Types.Mixed },
-    error: { type: String },
-  },
-  { _id: false, timestamps: true }
-);
 
 const MoodAssessmentSchema = new Schema<MoodAssessmentDoc>(
   {

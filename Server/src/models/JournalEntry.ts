@@ -1,21 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-
-const MlOutputSchema = new Schema(
-  {
-    status: { type: String, enum: ["pending", "completed", "failed"], default: "pending" },
-    source: { type: String, enum: ["journal", "assessment"] },
-    inputHash: { type: String },
-    modelVersion: { type: String },
-    primaryEmotion: { type: String },
-    secondaryEmotion: { type: String },
-    confidence: { type: Number },
-    score: { type: Number },
-    emotionType: { type: String },
-    raw: { type: Schema.Types.Mixed },
-    error: { type: String },
-  },
-  { _id: false, timestamps: true }
-);
+import { MlOutputSchema } from "./MlOutput.js";
 
 const JournalEntrySchema = new Schema(
   {

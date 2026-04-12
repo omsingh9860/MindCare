@@ -11,8 +11,10 @@ import {
   createJournalEntry,
   deleteJournalEntry,
   listJournalEntries,
+  markJournalForAnalysis,
   type JournalEntry,
 } from "@/lib/journal";
+import { MoodInsight } from "@/components/MoodInsight";
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("en-US", {
@@ -32,6 +34,7 @@ const Journal = () => {
 
   const [selected, setSelected] = useState<JournalEntry | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [resettingAnalysis, setResettingAnalysis] = useState(false);
 
   const { toast } = useToast();
 
@@ -119,6 +122,24 @@ const Journal = () => {
       });
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function handleMarkForAnalysis() {
+    if (!selected) return;
+    setResettingAnalysis(true);
+    try {
+      const result = await markJournalForAnalysis(selected.id);
+      setSelected((prev) => prev ? { ...prev, ml: result.ml } : prev);
+      toast({ title: "Queued for analysis", description: "This entry will be analyzed shortly." });
+    } catch (err: any) {
+      toast({
+        title: "Failed to queue",
+        description: err?.response?.data?.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingAnalysis(false);
     }
   }
 
@@ -273,6 +294,14 @@ const Journal = () => {
 
             <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
               {selected.content}
+            </div>
+
+            <div className="mt-4">
+              <MoodInsight
+                ml={selected.ml}
+                onMarkForAnalysis={handleMarkForAnalysis}
+                isResetting={resettingAnalysis}
+              />
             </div>
           </div>
         </div>

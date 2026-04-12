@@ -389,6 +389,36 @@ export async function getComparison(req: AuthRequest, res: Response) {
   }
 }
 
+export async function mlInsights(req: AuthRequest, res: Response) {
+  try {
+    if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const oid = new mongoose.Types.ObjectId(req.userId);
+
+    const [totalJournals, totalAssessments, streaks] = await Promise.all([
+      JournalEntry.countDocuments({ userId: oid }),
+      MoodAssessment.countDocuments({ userId: oid }),
+      UserStreak.findOne({ userId: oid }),
+    ]);
+
+    return res.json({
+      totalJournals,
+      totalAssessments,
+      streaks: {
+        journal: { current: streaks?.journalStreak ?? 0, best: streaks?.journalBestStreak ?? 0 },
+        mood: { current: streaks?.moodStreak ?? 0, best: streaks?.moodBestStreak ?? 0 },
+        meditation: { current: streaks?.meditationStreak ?? 0, best: streaks?.meditationBestStreak ?? 0 },
+      },
+      // Placeholder — will be populated once ML analysis completes
+      emotionTrends: [],
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+
 export async function exportReport(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
@@ -399,13 +429,13 @@ export async function exportReport(req: AuthRequest, res: Response) {
     const [moods, sessions, entries, achievements, streaks] = await Promise.all([
       MoodAssessment.find({ userId: oid, createdAt: { $gte: since } })
         .sort({ createdAt: -1 })
-        .select("answers notes createdAt"),
+        .select("answers notes ml createdAt"),
       MeditationSession.find({ userId: oid, createdAt: { $gte: since } })
         .sort({ createdAt: -1 })
         .select("title minutes createdAt"),
       JournalEntry.find({ userId: oid, createdAt: { $gte: since } })
         .sort({ createdAt: -1 })
-        .select("title createdAt"),
+        .select("title ml createdAt"),
       Achievement.find({ userId: oid }).sort({ unlockedAt: -1 }).select("badge points unlockedAt"),
       UserStreak.findOne({ userId: oid }),
     ]);
@@ -447,6 +477,7 @@ export async function exportReport(req: AuthRequest, res: Response) {
         totalEntries: entries.length,
         recentEntries: entries.slice(0, 5).map((e) => ({
           title: e.title,
+          ml: e.ml,
           date: e.createdAt,
         })),
       },

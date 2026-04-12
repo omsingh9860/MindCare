@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { MlOutputSchema } from "./MlOutput.js";
 
 const JournalEntrySchema = new Schema(
   {
@@ -9,6 +10,8 @@ const JournalEntrySchema = new Schema(
     riskLevel: { type: String, enum: ["low", "medium", "high"], default: "low" },
     riskReasons: { type: [String], default: [] },
     riskAssessedAt: { type: Date },
+
+    ml: { type: MlOutputSchema, default: () => ({ status: "pending", source: "journal" }) },
   },
   { timestamps: true }
 );

@@ -3,6 +3,7 @@ import type { AuthRequest } from "../middleware/auth.middleware.js";
 import { JournalEntry } from "../models/JournalEntry.js";
 import { assessRisk } from "../services/riskDetector.js";
 import { processJournalAchievements } from "../services/achievementService.js";
+import { predictText, hashInput } from "../services/mlClient.js";
 import mongoose from "mongoose";
 
 
@@ -59,6 +60,41 @@ export async function createEntry(req: AuthRequest, res: Response) {
       console.error("Achievement processing error:", err)
     );
 
+    // Fire and forget — run ML analysis in background
+    const mlText = `${entry.title}\n\n${entry.content}`;
+    (async () => {
+      try {
+        const result = await predictText(mlText);
+        await JournalEntry.updateOne(
+          { _id: entry._id },
+          {
+            $set: {
+              "ml.status": "completed",
+              "ml.modelVersion": "hf-space-v1",
+              "ml.inputHash": hashInput(mlText),
+              "ml.primaryEmotion": result.primaryEmotion,
+              "ml.secondaryEmotion": result.secondaryEmotion,
+              "ml.confidence": result.confidence,
+              "ml.score": result.score,
+              "ml.emotionType": result.emotionType,
+              "ml.raw": result.raw,
+              "ml.error": undefined,
+            },
+          }
+        );
+      } catch (e: any) {
+        await JournalEntry.updateOne(
+          { _id: entry._id },
+          {
+            $set: {
+              "ml.status": "failed",
+              "ml.error": e?.message || "ML analysis failed",
+            },
+          }
+        );
+      }
+    })().catch(console.error);
+
     return res.status(201).json({
       message: "Entry saved",
       risk: { level: entry.riskLevel, reasons: entry.riskReasons },
@@ -112,13 +148,10 @@ export async function markJournalForAnalysis(req: AuthRequest, res: Response) {
       return res.status(400).json({ message: "Invalid entry id" });
     }
 
+    // Reset to pending first
     const entry = await JournalEntry.findOneAndUpdate(
       { _id: id, userId: req.userId },
-      {
-        $set: {
-          ml: { status: "pending", source: "journal" },
-        },
-      },
+      { $set: { ml: { status: "pending", source: "journal" } } },
       { new: true }
     );
 
@@ -126,7 +159,42 @@ export async function markJournalForAnalysis(req: AuthRequest, res: Response) {
       return res.status(404).json({ message: "Entry not found" });
     }
 
-    return res.json({ message: "Marked for analysis", ml: entry.ml });
+    // Run ML synchronously so the caller gets the result immediately
+    try {
+      const mlText = `${entry.title}\n\n${entry.content}`;
+      const result = await predictText(mlText);
+      const updated = await JournalEntry.findByIdAndUpdate(
+        entry._id,
+        {
+          $set: {
+            "ml.status": "completed",
+            "ml.modelVersion": "hf-space-v1",
+            "ml.inputHash": hashInput(mlText),
+            "ml.primaryEmotion": result.primaryEmotion,
+            "ml.secondaryEmotion": result.secondaryEmotion,
+            "ml.confidence": result.confidence,
+            "ml.score": result.score,
+            "ml.emotionType": result.emotionType,
+            "ml.raw": result.raw,
+            "ml.error": undefined,
+          },
+        },
+        { new: true }
+      );
+      return res.json({ message: "Analysis complete", ml: updated?.ml });
+    } catch (mlErr: any) {
+      const updated = await JournalEntry.findByIdAndUpdate(
+        entry._id,
+        {
+          $set: {
+            "ml.status": "failed",
+            "ml.error": mlErr?.message || "ML analysis failed",
+          },
+        },
+        { new: true }
+      );
+      return res.json({ message: "Analysis failed", ml: updated?.ml });
+    }
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });

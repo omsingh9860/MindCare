@@ -2,6 +2,7 @@ import type { Response } from "express";
 import type { AuthRequest } from "../middleware/auth.middleware.js";
 import { MoodAssessment, type MoodAssessmentDoc } from "../models/MoodAssessment.js";
 import { processMoodAchievements } from "../services/achievementService.js";
+import { predictText, hashInput, ML_MODEL_VERSION } from "../services/mlClient.js";
 import mongoose from "mongoose";
 
 export async function createMoodAssessment(req: AuthRequest, res: Response) {
@@ -28,6 +29,44 @@ export async function createMoodAssessment(req: AuthRequest, res: Response) {
     processMoodAchievements(req.userId).catch((err) =>
       console.error("Achievement processing error:", err)
     );
+
+    // Fire and forget — run ML analysis in background
+    const answersText = Object.entries(doc.answers || {})
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("\n");
+    const mlText = `Mood check-in\n${answersText}\n\nNotes: ${doc.notes || ""}`;
+    (async () => {
+      try {
+        const result = await predictText(mlText);
+        await MoodAssessment.updateOne(
+          { _id: doc._id },
+          {
+            $set: {
+              "ml.status": "completed",
+              "ml.modelVersion": ML_MODEL_VERSION,
+              "ml.inputHash": hashInput(mlText),
+              "ml.primaryEmotion": result.primaryEmotion,
+              "ml.secondaryEmotion": result.secondaryEmotion,
+              "ml.confidence": result.confidence,
+              "ml.score": result.score,
+              "ml.emotionType": result.emotionType,
+              "ml.raw": result.raw,
+              "ml.error": undefined,
+            },
+          }
+        );
+      } catch (e: any) {
+        await MoodAssessment.updateOne(
+          { _id: doc._id },
+          {
+            $set: {
+              "ml.status": "failed",
+              "ml.error": e?.message || "ML analysis failed",
+            },
+          }
+        );
+      }
+    })().catch(console.error);
 
     return res.status(201).json({
       message: "Mood assessment saved",
@@ -80,13 +119,10 @@ export async function markMoodForAnalysis(req: AuthRequest, res: Response) {
       return res.status(400).json({ message: "Invalid assessment id" });
     }
 
+    // Reset to pending first
     const doc = await MoodAssessment.findOneAndUpdate(
       { _id: id, userId: req.userId },
-      {
-        $set: {
-          ml: { status: "pending", source: "assessment" },
-        },
-      },
+      { $set: { ml: { status: "pending", source: "assessment" } } },
       { new: true }
     );
 
@@ -94,7 +130,45 @@ export async function markMoodForAnalysis(req: AuthRequest, res: Response) {
       return res.status(404).json({ message: "Assessment not found" });
     }
 
-    return res.json({ message: "Marked for analysis", ml: doc.ml });
+    // Run ML synchronously so the caller gets the result immediately
+    try {
+      const answersText = Object.entries(doc.answers || {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join("\n");
+      const mlText = `Mood check-in\n${answersText}\n\nNotes: ${doc.notes || ""}`;
+      const result = await predictText(mlText);
+      const updated = await MoodAssessment.findByIdAndUpdate(
+        doc._id,
+        {
+          $set: {
+            "ml.status": "completed",
+            "ml.modelVersion": ML_MODEL_VERSION,
+            "ml.inputHash": hashInput(mlText),
+            "ml.primaryEmotion": result.primaryEmotion,
+            "ml.secondaryEmotion": result.secondaryEmotion,
+            "ml.confidence": result.confidence,
+            "ml.score": result.score,
+            "ml.emotionType": result.emotionType,
+            "ml.raw": result.raw,
+            "ml.error": undefined,
+          },
+        },
+        { new: true }
+      );
+      return res.json({ message: "Analysis complete", ml: updated?.ml });
+    } catch (mlErr: any) {
+      const updated = await MoodAssessment.findByIdAndUpdate(
+        doc._id,
+        {
+          $set: {
+            "ml.status": "failed",
+            "ml.error": mlErr?.message || "ML analysis failed",
+          },
+        },
+        { new: true }
+      );
+      return res.json({ message: "Analysis failed", ml: updated?.ml });
+    }
   } catch (err) {
     console.error(err);
     return res.status(500).json({ message: "Server error" });

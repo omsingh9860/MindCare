@@ -2,7 +2,7 @@ import type { Response } from "express";
 import type { AuthRequest } from "../middleware/auth.middleware.js";
 import { MoodAssessment, type MoodAssessmentDoc } from "../models/MoodAssessment.js";
 import { processMoodAchievements } from "../services/achievementService.js";
-import { predictText, hashInput } from "../services/mlClient.js";
+import { predictText, hashInput, ML_MODEL_VERSION } from "../services/mlClient.js";
 import mongoose from "mongoose";
 
 export async function createMoodAssessment(req: AuthRequest, res: Response) {
@@ -43,7 +43,7 @@ export async function createMoodAssessment(req: AuthRequest, res: Response) {
           {
             $set: {
               "ml.status": "completed",
-              "ml.modelVersion": "hf-space-v1",
+              "ml.modelVersion": ML_MODEL_VERSION,
               "ml.inputHash": hashInput(mlText),
               "ml.primaryEmotion": result.primaryEmotion,
               "ml.secondaryEmotion": result.secondaryEmotion,
@@ -142,7 +142,7 @@ export async function markMoodForAnalysis(req: AuthRequest, res: Response) {
         {
           $set: {
             "ml.status": "completed",
-            "ml.modelVersion": "hf-space-v1",
+            "ml.modelVersion": ML_MODEL_VERSION,
             "ml.inputHash": hashInput(mlText),
             "ml.primaryEmotion": result.primaryEmotion,
             "ml.secondaryEmotion": result.secondaryEmotion,

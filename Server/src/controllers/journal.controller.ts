@@ -3,7 +3,7 @@ import type { AuthRequest } from "../middleware/auth.middleware.js";
 import { JournalEntry } from "../models/JournalEntry.js";
 import { assessRisk } from "../services/riskDetector.js";
 import { processJournalAchievements } from "../services/achievementService.js";
-import { predictText, hashInput } from "../services/mlClient.js";
+import { predictText, hashInput, ML_MODEL_VERSION } from "../services/mlClient.js";
 import mongoose from "mongoose";
 
 
@@ -70,7 +70,7 @@ export async function createEntry(req: AuthRequest, res: Response) {
           {
             $set: {
               "ml.status": "completed",
-              "ml.modelVersion": "hf-space-v1",
+              "ml.modelVersion": ML_MODEL_VERSION,
               "ml.inputHash": hashInput(mlText),
               "ml.primaryEmotion": result.primaryEmotion,
               "ml.secondaryEmotion": result.secondaryEmotion,
@@ -168,7 +168,7 @@ export async function markJournalForAnalysis(req: AuthRequest, res: Response) {
         {
           $set: {
             "ml.status": "completed",
-            "ml.modelVersion": "hf-space-v1",
+            "ml.modelVersion": ML_MODEL_VERSION,
             "ml.inputHash": hashInput(mlText),
             "ml.primaryEmotion": result.primaryEmotion,
             "ml.secondaryEmotion": result.secondaryEmotion,

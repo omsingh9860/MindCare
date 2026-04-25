@@ -12,6 +12,11 @@ export type MlNormalized = {
 const DEFAULT_ML_API_URL =
   "https://atharva-mohite-ce-ai-mental-health-api.hf.space";
 
+const ML_TIMEOUT_MS = 10_000;
+
+/** The model version tag stored alongside every prediction */
+export const ML_MODEL_VERSION = "hf-space-v1";
+
 /** Ensure the URL ends with /predict */
 function withPredict(base: string): string {
   const clean = base.replace(/\/$/, "");
@@ -25,14 +30,14 @@ export function hashInput(text: string): string {
 
 /**
  * Call the ML /predict endpoint and return normalised camelCase fields.
- * Throws on network error, non-2xx response, or 10-second timeout.
+ * Throws on network error, non-2xx response, or timeout.
  */
 export async function predictText(text: string): Promise<MlNormalized> {
   const base = process.env.ML_API_URL ?? DEFAULT_ML_API_URL;
   const endpoint = withPredict(base);
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
+  const timer = setTimeout(() => controller.abort(), ML_TIMEOUT_MS);
 
   try {
     const response = await fetch(endpoint, {
@@ -55,21 +60,19 @@ export async function predictText(text: string): Promise<MlNormalized> {
     return {
       primaryEmotion:
         typeof raw["Primary Emotion"] === "string"
-          ? (raw["Primary Emotion"] as string)
+          ? raw["Primary Emotion"]
           : undefined,
       secondaryEmotion:
         typeof raw["Secondary Emotion"] === "string"
-          ? (raw["Secondary Emotion"] as string)
+          ? raw["Secondary Emotion"]
           : undefined,
       confidence:
-        typeof raw["Confidence"] === "number"
-          ? (raw["Confidence"] as number)
-          : undefined,
+        typeof raw["Confidence"] === "number" ? raw["Confidence"] : undefined,
       score:
-        typeof raw["Score"] === "number" ? (raw["Score"] as number) : undefined,
+        typeof raw["Score"] === "number" ? raw["Score"] : undefined,
       emotionType:
         typeof raw["Emotion Type"] === "string"
-          ? (raw["Emotion Type"] as string)
+          ? raw["Emotion Type"]
           : undefined,
       raw,
     };

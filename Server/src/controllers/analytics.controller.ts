@@ -39,27 +39,55 @@ function computeScore(answers: Record<string, string>): number | null {
   const avg = values.reduce((s, n) => s + n, 0) / values.length;
   return Math.round(avg * 10) / 10;
 }
+
+/**
+ * Normalize mood test score from 1-9 range to 0-10 range
+ * Mood tests use Likert scale (1-5) mapped to MOOD_SCORE_MAP (1-9)
+ * Input: 1-9 (from MOOD_SCORE_MAP)
+ * Output: 0-10 where 0 = worst wellbeing, 10 = best wellbeing
+ */
+function normalizeMoodTestScore(score: number | null): number | null {
+  if (score === null || score === undefined) return null;
+  // Map [1, 9] → [0, 10]
+  // score 1 → 0, score 9 → 10
+  return Math.round(((score - 1) / 8) * 10 * 10) / 10;
+}
+
+/**
+ * Normalize journal ML score to 0-10 range
+ * Journal ML can return various ranges (0-1, 0-100)
+ * Input: any numeric range + emotionType to determine polarity
+ * Output: 0-10 where 0 = worst wellbeing, 10 = best wellbeing
+ */
 export function normalizeJournalScore(
   score: number | undefined,
   emotionType: string | undefined
 ): number | null {
   if (score === undefined || score === null) return null;
-  // Bring to [0, 1] range regardless of whether the API returns 0–1 or 0–100
+
+  // Normalize to [0, 1] range
   let normalized = score > 1 ? score / 100 : score;
   normalized = Math.max(0, Math.min(1, normalized));
+
+  // If emotionType is "negative", flip the score
+  // (negative emotions indicate lower wellbeing)
   if (emotionType === "negative") {
     normalized = 1 - normalized;
   }
-  // Map [0, 1] → [1, 9] to match MOOD_SCORE_MAP range
-  return 1 + normalized * 8;
+
+  // Map [0, 1] → [0, 10]
+  return Math.round(normalized * 10 * 10) / 10; // 0.0 to 10.0
 }
 
 /**
  * Combine per-day mood-test score (MT) and journal score (J) into a single
- * DailyMood score using dynamic weights:
- *   wMT = 1 if mtScore is available, else 0
- *   wJ  = min(1, journalCount / 2)   (0.5 for 1 entry, 1.0 for 2+)
+ * DailyMood score using dynamic weights. Both inputs are in 0-10 range.
+ *
+ * Formula:
+ *   wMT = 1.0 if mtScore is available, else 0
+ *   wJ  = min(1.0, journalCount / 2)   (0.5 for 1 entry, 1.0 for 2+)
  *   DailyMood = (wMT*MT + wJ*J) / (wMT + wJ)
+ *
  * Falls back to whichever source has data; returns null if neither has data.
  */
 export function computeCombinedScore(
@@ -67,12 +95,15 @@ export function computeCombinedScore(
   journalScore: number | null,
   journalCount: number
 ): number | null {
-  const wMT = mtScore !== null ? 1 : 0;
-  const wJ = Math.min(1, journalCount / 2);
+  const wMT = mtScore !== null ? 1.0 : 0;
+  const wJ = Math.min(1.0, journalCount / 2);
+
   if (wMT === 0 && wJ === 0) return null;
-  const num = wMT * (mtScore ?? 0) + wJ * (journalScore ?? 0);
-  const den = wMT + wJ;
-  return Math.round((num / den) * 10) / 10;
+
+  const numerator = wMT * (mtScore ?? 0) + wJ * (journalScore ?? 0);
+  const denominator = wMT + wJ;
+
+  return Math.round((numerator / denominator) * 10) / 10;
 }
 
 function getDaysAgo(days: number): Date {
@@ -135,7 +166,7 @@ export async function getMoodTrends(req: AuthRequest, res: Response) {
           .select("ml createdAt"),
       ]);
 
-     // Daily aggregated mood-test scores
+      // Daily aggregated mood-test scores (1-9 range from MOOD_SCORE_MAP)
       const dailyMtMap: Record<string, { scores: number[]; count: number }> = {};
 
       for (const m of moods) {
@@ -148,7 +179,8 @@ export async function getMoodTrends(req: AuthRequest, res: Response) {
         dailyMtMap[dateStr].count++;
       }
 
-       const dailyJournalMap: Record<string, { scores: number[]; count: number }> = {};
+      // Daily aggregated journal scores (already normalized to 0-10)
+      const dailyJournalMap: Record<string, { scores: number[]; count: number }> = {};
 
       for (const j of journals) {
         const ml = j.ml as { score?: number; emotionType?: string } | undefined;
@@ -171,10 +203,13 @@ export async function getMoodTrends(req: AuthRequest, res: Response) {
           const mt = dailyMtMap[date];
           const jm = dailyJournalMap[date];
 
-          const mtScore = mt
+          // Normalize mood test score to 0-10
+          const mtScoreRaw = mt
             ? Math.round((mt.scores.reduce((s, n) => s + n, 0) / mt.scores.length) * 10) / 10
             : null;
+          const mtScore = mtScoreRaw !== null ? normalizeMoodTestScore(mtScoreRaw) : null;
 
+          // Journal score already normalized to 0-10
           const jScore =
             jm && jm.scores.length > 0
               ? Math.round((jm.scores.reduce((s, n) => s + n, 0) / jm.scores.length) * 10) / 10
@@ -185,8 +220,8 @@ export async function getMoodTrends(req: AuthRequest, res: Response) {
 
           return {
             date,
-            // avgScore kept for backward compat (mood-test score when available)
-            avgScore: mtScore ?? combined ?? 0,
+            // avgScore kept for backward compat (normalized combined score)
+            avgScore: combined ?? 0,
             count: (mt?.count ?? 0) + jCount,
             moodTestScore: mtScore,
             journalScore: jScore,
@@ -514,7 +549,6 @@ export async function mlInsights(req: AuthRequest, res: Response) {
     return res.status(500).json({ message: "Server error" });
   }
 }
-
 
 export async function exportReport(req: AuthRequest, res: Response) {
   try {

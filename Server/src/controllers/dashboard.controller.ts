@@ -29,7 +29,7 @@ const MOOD_SCORE_MAP: Record<string, number> = {
   "Extremely": 1,
 };
 
-function computeScore(answers: Record<string, string>): number | null {
+function computeScore(answers: Record<string, string>) {
   const values = Object.values(answers)
     .map((a) => MOOD_SCORE_MAP[a])
     .filter((n): n is number => typeof n === "number");
@@ -41,6 +41,8 @@ function computeScore(answers: Record<string, string>): number | null {
 
 /**
  * Normalize mood test score from 1-9 range to 0-10 range
+ * Input: 1-9 (from MOOD_SCORE_MAP)
+ * Output: 0-10 where 0 = worst wellbeing, 10 = best wellbeing
  */
 function normalizeMoodTestScore(score: number | null): number | null {
   if (score === null || score === undefined) return null;
@@ -49,22 +51,26 @@ function normalizeMoodTestScore(score: number | null): number | null {
 }
 
 /**
- * Normalize journal ML score to 0-10 range
+ * Normalize journal ML score from -3 to +3 range to 0-10 range
+ * ML API returns: -3 (very negative), 0 (neutral), +3 (very positive)
+ * Input: -3 to +3
+ * Output: 0-10 where 0 = worst wellbeing, 10 = best wellbeing
+ * 
+ * Formula: ((score + 3) / 6) * 10
+ *   -3 → 0
+ *    0 → 5
+ *   +3 → 10
  */
-function normalizeJournalScore(
-  score: number | undefined,
-  emotionType: string | undefined
-): number | null {
+function normalizeJournalScore(score: number | undefined): number | null {
   if (score === undefined || score === null) return null;
 
-  let normalized = score > 1 ? score / 100 : score;
-  normalized = Math.max(0, Math.min(1, normalized));
+  // Clamp to [-3, +3] range in case of any outliers
+  const clamped = Math.max(-3, Math.min(3, score));
 
-  if (emotionType === "negative") {
-    normalized = 1 - normalized;
-  }
+  // Map [-3, +3] → [0, 10]
+  const normalized = ((clamped + 3) / 6) * 10;
 
-  return Math.round(normalized * 10 * 10) / 10; // 0.0 to 10.0
+  return Math.round(normalized * 10) / 10; // 0.0 to 10.0
 }
 
 /**
@@ -135,9 +141,8 @@ export async function getDashboardSummary(req: AuthRequest, res: Response) {
     for (const journal of journals) {
       const ml = journal.ml as {
         score?: number;
-        emotionType?: string;
       } | undefined;
-      const jScore = normalizeJournalScore(ml?.score, ml?.emotionType);
+      const jScore = normalizeJournalScore(ml?.score);
 
       const dateStr = new Date(journal.createdAt).toISOString().slice(0, 10);
       if (!dailyMap[dateStr]) {

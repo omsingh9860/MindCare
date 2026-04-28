@@ -39,6 +39,41 @@ function computeScore(answers: Record<string, string>): number | null {
   const avg = values.reduce((s, n) => s + n, 0) / values.length;
   return Math.round(avg * 10) / 10;
 }
+export function normalizeJournalScore(
+  score: number | undefined,
+  emotionType: string | undefined
+): number | null {
+  if (score === undefined || score === null) return null;
+  // Bring to [0, 1] range regardless of whether the API returns 0–1 or 0–100
+  let normalized = score > 1 ? score / 100 : score;
+  normalized = Math.max(0, Math.min(1, normalized));
+  if (emotionType === "negative") {
+    normalized = 1 - normalized;
+  }
+  // Map [0, 1] → [1, 9] to match MOOD_SCORE_MAP range
+  return 1 + normalized * 8;
+}
+
+/**
+ * Combine per-day mood-test score (MT) and journal score (J) into a single
+ * DailyMood score using dynamic weights:
+ *   wMT = 1 if mtScore is available, else 0
+ *   wJ  = min(1, journalCount / 2)   (0.5 for 1 entry, 1.0 for 2+)
+ *   DailyMood = (wMT*MT + wJ*J) / (wMT + wJ)
+ * Falls back to whichever source has data; returns null if neither has data.
+ */
+export function computeCombinedScore(
+  mtScore: number | null,
+  journalScore: number | null,
+  journalCount: number
+): number | null {
+  const wMT = mtScore !== null ? 1 : 0;
+  const wJ = Math.min(1, journalCount / 2);
+  if (wMT === 0 && wJ === 0) return null;
+  const num = wMT * (mtScore ?? 0) + wJ * (journalScore ?? 0);
+  const den = wMT + wJ;
+  return Math.round((num / den) * 10) / 10;
+}
 
 function getDaysAgo(days: number): Date {
   const d = new Date();
@@ -84,33 +119,95 @@ export async function getMoodTrends(req: AuthRequest, res: Response) {
       const oid = new mongoose.Types.ObjectId(req.userId!);
       const since = getDaysAgo(period);
 
-      const moods = await MoodAssessment.find({
-        userId: oid,
-        createdAt: { $gte: since },
-      })
-        .sort({ createdAt: 1 })
-        .select("answers notes createdAt");
+      const [moods, journals] = await Promise.all([
+        MoodAssessment.find({
+          userId: oid,
+          createdAt: { $gte: since },
+        })
+          .sort({ createdAt: 1 })
+          .select("answers notes createdAt"),
+        JournalEntry.find({
+          userId: oid,
+          createdAt: { $gte: since },
+          "ml.status": "completed",
+        })
+          .sort({ createdAt: 1 })
+          .select("ml createdAt"),
+      ]);
 
-      // Daily aggregated mood scores
-      const dailyMap: Record<string, { scores: number[]; count: number }> = {};
+     // Daily aggregated mood-test scores
+      const dailyMtMap: Record<string, { scores: number[]; count: number }> = {};
 
       for (const m of moods) {
         const score = computeScore(m.answers as Record<string, string>);
         if (score === null) continue;
 
         const dateStr = new Date(m.createdAt).toISOString().slice(0, 10);
-        if (!dailyMap[dateStr]) dailyMap[dateStr] = { scores: [], count: 0 };
-        dailyMap[dateStr].scores.push(score);
-        dailyMap[dateStr].count++;
+        if (!dailyMtMap[dateStr]) dailyMtMap[dateStr] = { scores: [], count: 0 };
+        dailyMtMap[dateStr].scores.push(score);
+        dailyMtMap[dateStr].count++;
       }
 
-      const dailyTrends = Object.entries(dailyMap)
-        .map(([date, val]) => ({
-          date,
-          avgScore: Math.round((val.scores.reduce((s, n) => s + n, 0) / val.scores.length) * 10) / 10,
-          count: val.count,
-        }))
-        .sort((a, b) => a.date.localeCompare(b.date));
+       const dailyJournalMap: Record<string, { scores: number[]; count: number }> = {};
+
+      for (const j of journals) {
+        const ml = j.ml as { score?: number; emotionType?: string } | undefined;
+        const jScore = normalizeJournalScore(ml?.score, ml?.emotionType);
+        const dateStr = new Date(j.createdAt).toISOString().slice(0, 10);
+        if (!dailyJournalMap[dateStr]) dailyJournalMap[dateStr] = { scores: [], count: 0 };
+        dailyJournalMap[dateStr].count++;
+        if (jScore !== null) dailyJournalMap[dateStr].scores.push(jScore);
+      }
+
+      // Union of all dates from both sources
+      const allDates = new Set([
+        ...Object.keys(dailyMtMap),
+        ...Object.keys(dailyJournalMap),
+      ]);
+
+      const dailyTrendsRaw = Array.from(allDates)
+        .sort()
+        .map((date) => {
+          const mt = dailyMtMap[date];
+          const jm = dailyJournalMap[date];
+
+          const mtScore = mt
+            ? Math.round((mt.scores.reduce((s, n) => s + n, 0) / mt.scores.length) * 10) / 10
+            : null;
+
+          const jScore =
+            jm && jm.scores.length > 0
+              ? Math.round((jm.scores.reduce((s, n) => s + n, 0) / jm.scores.length) * 10) / 10
+              : null;
+
+          const jCount = jm ? jm.count : 0;
+          const combined = computeCombinedScore(mtScore, jScore, jCount);
+
+          return {
+            date,
+            // avgScore kept for backward compat (mood-test score when available)
+            avgScore: mtScore ?? combined ?? 0,
+            count: (mt?.count ?? 0) + jCount,
+            moodTestScore: mtScore,
+            journalScore: jScore,
+            combinedScore: combined,
+          };
+        });
+
+      // Apply EMA (α = 0.35) over combinedScore to produce trendScore
+      const EMA_ALPHA = 0.35;
+      let prevTrend: number | null = null;
+      const dailyTrends = dailyTrendsRaw.map((d) => {
+        if (d.combinedScore !== null) {
+          prevTrend =
+            prevTrend === null
+              ? d.combinedScore
+              : Math.round(
+                  (EMA_ALPHA * d.combinedScore + (1 - EMA_ALPHA) * prevTrend) * 10
+                ) / 10;
+        }
+        return { ...d, trendScore: prevTrend };
+      });
 
       // Emotion frequency distribution
       const emotionFreq: Record<string, number> = {};

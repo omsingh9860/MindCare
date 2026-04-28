@@ -2,11 +2,10 @@ import type { Response } from "express";
 import type { AuthRequest } from "../middleware/auth.middleware.js";
 import { JournalEntry } from "../models/JournalEntry.js";
 import { assessRisk } from "../services/riskDetector.js";
+import { startAutoAlertForHighRisk } from "../services/crisisAlertService.js";
 import { processJournalAchievements } from "../services/achievementService.js";
 import { predictText, hashInput, ML_MODEL_VERSION } from "../services/mlClient.js";
 import mongoose from "mongoose";
-
-
 
 export async function deleteEntry(req: AuthRequest, res: Response) {
   try {
@@ -38,22 +37,32 @@ export async function deleteEntry(req: AuthRequest, res: Response) {
 export async function createEntry(req: AuthRequest, res: Response) {
   try {
     if (!req.userId) return res.status(401).json({ message: "Unauthorized" });
-    
+
     const { title, content } = req.body as { title?: string; content?: string };
-    const risk = assessRisk(`${title}\n\n${content}`);
+
     if (!title?.trim() || !content?.trim()) {
       return res.status(400).json({ message: "title and content are required" });
     }
 
+    // Assess risk level for high-risk keywords
+    const risk = assessRisk(`${title}\n\n${content}`);
+
     const entry = await JournalEntry.create({
-  userId: req.userId,
-  title: title.trim(),
-  content: content.trim(),
-  riskLevel: risk.riskLevel,
-  riskReasons: risk.reasons,
-  riskAssessedAt: new Date(),
-  ml: { status: "pending", source: "journal" },
-});
+      userId: req.userId,
+      title: title.trim(),
+      content: content.trim(),
+      riskLevel: risk.riskLevel,
+      riskReasons: risk.reasons,
+      riskAssessedAt: new Date(),
+      ml: { status: "pending", source: "journal" },
+    });
+
+    // Fire and forget — Auto-trigger crisis alert if high-risk content detected
+    if (risk.riskLevel === "high") {
+      startAutoAlertForHighRisk(req.userId, entry.title).catch((err) =>
+        console.error("[Journal] Crisis alert auto-trigger failed:", err)
+      );
+    }
 
     // Fire and forget — process achievements without blocking the response
     processJournalAchievements(req.userId).catch((err) =>

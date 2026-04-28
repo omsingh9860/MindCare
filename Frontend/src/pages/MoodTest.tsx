@@ -8,64 +8,71 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { createMoodAssessment } from "@/lib/mood";
-
-const questions = [
-  {
-    id: 1,
-    question: "How would you describe your overall mood today?",
-    options: ["Very Good", "Good", "Neutral", "Not Good", "Very Bad"],
-  },
-  {
-    id: 2,
-    question: "How well did you sleep last night?",
-    options: ["Excellent", "Good", "Fair", "Poor", "Very Poor"],
-  },
-  {
-    id: 3,
-    question: "How energetic do you feel right now?",
-    options: ["Very Energetic", "Energetic", "Moderate", "Low Energy", "Exhausted"],
-  },
-  {
-    id: 4,
-    question: "How stressed are you feeling?",
-    options: ["Not at all", "A little", "Moderately", "Very", "Extremely"],
-  },
-];
+import {
+  LIKERT_OPTIONS,
+  computeMoodScore,
+  formatAnswerForStorage,
+  pickRandomQuestions,
+} from "@/lib/moodQuestions";
+import type { MoodQuestion } from "@/lib/moodQuestions";
 
 const MoodTest = () => {
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const SCORE_DISPLAY_DURATION_MS = 2500;
+  // Pick a fresh random set of questions once when the component mounts.
+  const [questions] = useState<MoodQuestion[]>(() => pickRandomQuestions(5, 10));
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [scoreResult, setScoreResult] = useState<number | null>(null);
 
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleAnswerChange = (questionId: number, value: string) => {
+  const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   };
+
+  const answeredCount = Object.keys(answers).length;
+  const totalCount = questions.length;
+  const progressPct = totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0;
+
+  // Live preview score (null until at least one answer)
+  const liveScore = computeMoodScore(questions, answers);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (Object.keys(answers).length < questions.length) {
+    if (answeredCount < totalCount) {
       toast({
         title: "Incomplete Test",
-        description: "Please answer all questions",
+        description: "Please answer all questions before submitting.",
         variant: "destructive",
       });
       return;
     }
 
+    // Build the payload: stable question-id keys, formatted answer strings.
+    const formattedAnswers: Record<string, string> = {};
+    for (const q of questions) {
+      const raw = answers[q.id];
+      if (raw) {
+        formattedAnswers[q.id] = formatAnswerForStorage(raw, q.negative);
+      }
+    }
+
     setSaving(true);
     try {
-      await createMoodAssessment(answers, notes);
+      await createMoodAssessment(formattedAnswers, notes);
+
+      const finalScore = computeMoodScore(questions, answers);
+      setScoreResult(finalScore);
 
       toast({
         title: "Test Completed!",
         description: "Your mood has been recorded. Check your dashboard for insights.",
       });
 
-      setTimeout(() => navigate("/dashboard"), 800);
+      setTimeout(() => navigate("/dashboard"), SCORE_DISPLAY_DURATION_MS);
     } catch (err: any) {
       toast({
         title: "Save failed",
@@ -75,6 +82,14 @@ const MoodTest = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const scoreLabel = (score: number) => {
+    if (score >= 80) return { text: "Excellent", color: "text-green-500" };
+    if (score >= 60) return { text: "Good", color: "text-blue-500" };
+    if (score >= 40) return { text: "Fair", color: "text-yellow-500" };
+    if (score >= 20) return { text: "Low", color: "text-orange-500" };
+    return { text: "Poor", color: "text-red-500" };
   };
 
   return (
@@ -89,6 +104,44 @@ const MoodTest = () => {
             <p className="text-lg text-muted-foreground">
               Take a moment to check in with yourself
             </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {totalCount} questions · unique set every session
+            </p>
+          </div>
+
+          {/* Score result banner (shown after successful submit) */}
+          {scoreResult !== null && (
+            <div className="glass-card p-6 rounded-xl mb-8 text-center animate-fade-in">
+              <p className="text-muted-foreground mb-1">Your Wellbeing Score</p>
+              <p className={`text-5xl font-bold mb-2 ${scoreLabel(scoreResult).color}`}>
+                {scoreResult}
+                <span className="text-2xl text-muted-foreground">/100</span>
+              </p>
+              <p className={`text-lg font-semibold ${scoreLabel(scoreResult).color}`}>
+                {scoreLabel(scoreResult).text}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Redirecting to your dashboard…
+              </p>
+            </div>
+          )}
+
+          {/* Progress bar */}
+          <div className="mb-6 animate-fade-in">
+            <div className="flex justify-between text-sm text-muted-foreground mb-1">
+              <span>{answeredCount} of {totalCount} answered</span>
+              {liveScore !== null && (
+                <span className={scoreLabel(liveScore).color}>
+                  Live score: {liveScore}/100
+                </span>
+              )}
+            </div>
+            <div className="w-full bg-muted rounded-full h-2">
+              <div
+                className="bg-primary h-2 rounded-full smooth-transition"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -99,7 +152,7 @@ const MoodTest = () => {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <h3 className="text-lg font-semibold mb-4">
-                  {q.id}. {q.question}
+                  {index + 1}. {q.question}
                 </h3>
 
                 <RadioGroup
@@ -107,11 +160,11 @@ const MoodTest = () => {
                   value={answers[q.id]}
                 >
                   <div className="space-y-3">
-                    {q.options.map((option) => (
+                    {LIKERT_OPTIONS.map((option) => (
                       <div key={option} className="flex items-center space-x-3">
-                        <RadioGroupItem value={option} id={`q${q.id}-${option}`} />
+                        <RadioGroupItem value={option} id={`${q.id}-${option}`} />
                         <Label
-                          htmlFor={`q${q.id}-${option}`}
+                          htmlFor={`${q.id}-${option}`}
                           className="cursor-pointer flex-1 py-2"
                         >
                           {option}
@@ -140,7 +193,7 @@ const MoodTest = () => {
               <Button
                 type="submit"
                 size="lg"
-                disabled={saving}
+                disabled={saving || scoreResult !== null}
                 className="bg-primary hover:bg-primary/90 px-12 py-6 text-lg"
               >
                 {saving ? "Saving..." : "Submit Assessment"}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -8,46 +8,56 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { createMoodAssessment } from "@/lib/mood";
+import {
+  LIKERT_5,
+  pickRandomQuestions,
+  normalizedScore,
+  type MoodQuestion,
+} from "@/lib/moodQuestions";
 
-const questions = [
-  {
-    id: 1,
-    question: "How would you describe your overall mood today?",
-    options: ["Very Good", "Good", "Neutral", "Not Good", "Very Bad"],
-  },
-  {
-    id: 2,
-    question: "How well did you sleep last night?",
-    options: ["Excellent", "Good", "Fair", "Poor", "Very Poor"],
-  },
-  {
-    id: 3,
-    question: "How energetic do you feel right now?",
-    options: ["Very Energetic", "Energetic", "Moderate", "Low Energy", "Exhausted"],
-  },
-  {
-    id: 4,
-    question: "How stressed are you feeling?",
-    options: ["Not at all", "A little", "Moderately", "Very", "Extremely"],
-  },
-];
+type AnswerMap = Record<string, number>; // questionId -> 1..5
+
+function computeWellbeing(questions: MoodQuestion[], answers: AnswerMap) {
+  const answeredCount = questions.filter((q) => answers[q.id] !== undefined).length;
+
+  const totalNormalized = questions.reduce((sum, q) => {
+    const v = answers[q.id];
+    if (v === undefined) return sum;
+    return sum + normalizedScore(v, q.negative);
+  }, 0);
+
+  const max = questions.length * 5;
+  const percent = questions.length ? Math.round((totalNormalized / max) * 100) : 0;
+
+  return { answeredCount, percent, totalNormalized, max };
+}
 
 const MoodTest = () => {
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [questions, setQuestions] = useState<MoodQuestion[]>(() => pickRandomQuestions(5, 10));
+  const [answers, setAnswers] = useState<AnswerMap>({});
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleAnswerChange = (questionId: number, value: string) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
+  const wellbeing = useMemo(() => computeWellbeing(questions, answers), [questions, answers]);
+
+  const handleAnswerChange = (questionId: string, value: string) => {
+    setAnswers((prev) => ({ ...prev, [questionId]: Number(value) }));
+  };
+
+  const canRegenerate = Object.keys(answers).length === 0;
+
+  const regenerate = () => {
+    if (!canRegenerate) return;
+    setQuestions(pickRandomQuestions(5, 10));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (Object.keys(answers).length < questions.length) {
+    if (wellbeing.answeredCount < questions.length) {
       toast({
         title: "Incomplete Test",
         description: "Please answer all questions",
@@ -58,7 +68,21 @@ const MoodTest = () => {
 
     setSaving(true);
     try {
-      await createMoodAssessment(answers, notes);
+      // Keep payload compatible with backend: Record<string, string>
+      // (key by question text for readability in DB/exports)
+      const answersPayload: Record<string, string> = {};
+      for (const q of questions) {
+        const v = answers[q.id]; // 1..5
+        const label = LIKERT_5.find((o) => o.value === v)?.label ?? String(v);
+        answersPayload[q.question] = `${label} (${v}/5)`;
+      }
+
+      // Optional: include score summary into notes so it’s saved too
+      const notesWithScore = notes?.trim()
+        ? `${notes.trim()}\n\nWellbeing Score: ${wellbeing.percent}/100`
+        : `Wellbeing Score: ${wellbeing.percent}/100`;
+
+      await createMoodAssessment(answersPayload, notesWithScore);
 
       toast({
         title: "Test Completed!",
@@ -87,8 +111,41 @@ const MoodTest = () => {
               Mood <span className="gradient-text">Assessment</span>
             </h1>
             <p className="text-lg text-muted-foreground">
-              Take a moment to check in with yourself
+              Take a moment to check in with yourself (random 5–10 questions each time)
             </p>
+          </div>
+
+          {/* Score Summary */}
+          <div className="glass-card p-6 rounded-xl mb-8 animate-fade-in">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Wellbeing Score</h2>
+                <p className="text-sm text-muted-foreground">
+                  Higher score = better overall wellbeing (stress/sadness/anger questions are auto-inverted)
+                </p>
+              </div>
+
+              <div className="text-right">
+                <div className="text-3xl font-bold">{wellbeing.percent}</div>
+                <div className="text-sm text-muted-foreground">/ 100</div>
+              </div>
+            </div>
+
+            <div className="mt-4 h-2 rounded bg-muted overflow-hidden">
+              <div className="h-2 bg-primary" style={{ width: `${wellbeing.percent}%` }} />
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <Button type="button" variant="outline" onClick={regenerate} disabled={!canRegenerate}>
+                New questions
+              </Button>
+            </div>
+
+            {!canRegenerate && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Tip: You can generate a new set only before answering (to avoid losing answers).
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -96,30 +153,44 @@ const MoodTest = () => {
               <div
                 key={q.id}
                 className="glass-card p-6 rounded-xl animate-fade-in-up"
-                style={{ animationDelay: `${index * 100}ms` }}
+                style={{ animationDelay: `${index * 80}ms` }}
               >
-                <h3 className="text-lg font-semibold mb-4">
-                  {q.id}. {q.question}
-                </h3>
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-lg font-semibold mb-4">
+                    {index + 1}. {q.question}
+                  </h3>
+
+                  <div className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground whitespace-nowrap">
+                    {q.category}
+                  </div>
+                </div>
 
                 <RadioGroup
                   onValueChange={(value) => handleAnswerChange(q.id, value)}
-                  value={answers[q.id]}
+                  value={answers[q.id] ? String(answers[q.id]) : undefined}
                 >
                   <div className="space-y-3">
-                    {q.options.map((option) => (
-                      <div key={option} className="flex items-center space-x-3">
-                        <RadioGroupItem value={option} id={`q${q.id}-${option}`} />
+                    {LIKERT_5.map((option) => (
+                      <div key={option.value} className="flex items-center space-x-3">
+                        <RadioGroupItem
+                          value={String(option.value)}
+                          id={`q${q.id}-${option.value}`}
+                        />
                         <Label
-                          htmlFor={`q${q.id}-${option}`}
+                          htmlFor={`q${q.id}-${option.value}`}
                           className="cursor-pointer flex-1 py-2"
                         >
-                          {option}
+                          {option.label}
                         </Label>
                       </div>
                     ))}
                   </div>
                 </RadioGroup>
+
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Question score:{" "}
+                  {answers[q.id] ? normalizedScore(answers[q.id], q.negative) : "—"} / 5
+                </p>
               </div>
             ))}
 

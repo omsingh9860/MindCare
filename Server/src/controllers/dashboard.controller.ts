@@ -51,26 +51,27 @@ function normalizeMoodTestScore(score: number | null): number | null {
 }
 
 /**
- * Normalize journal ML score from -3 to +3 range to 0-10 range
- * ML API returns: -3 (very negative), 0 (neutral), +3 (very positive)
- * Input: -3 to +3
- * Output: 0-10 where 0 = worst wellbeing, 10 = best wellbeing
- * 
- * Formula: ((score + 3) / 6) * 10
- *   -3 → 0
- *    0 → 5
- *   +3 → 10
+ * Normalize journal ML score to 0-10 range
  */
-function normalizeJournalScore(score: number | undefined): number | null {
+function normalizeJournalScore(
+  score: number | undefined,
+  emotionType: string | undefined
+): number | null {
   if (score === undefined || score === null) return null;
 
-  // Clamp to [-3, +3] range in case of any outliers
-  const clamped = Math.max(-3, Math.min(3, score));
+  // If ML returns signed range -3..+3, normalize directly
+  if (score >= -3 && score <= 3) {
+    return Math.round(((score + 3) / 6) * 10 * 10) / 10; // 0.0 to 10.0
+  }
 
-  // Map [-3, +3] → [0, 10]
-  const normalized = ((clamped + 3) / 6) * 10;
+  let normalized = score > 1 ? score / 100 : score;
+  normalized = Math.max(0, Math.min(1, normalized));
 
-  return Math.round(normalized * 10) / 10; // 0.0 to 10.0
+  if (emotionType === "negative") {
+    normalized = 1 - normalized;
+  }
+
+  return Math.round(normalized * 10 * 10) / 10; // 0.0 to 10.0
 }
 
 /**
@@ -141,8 +142,9 @@ export async function getDashboardSummary(req: AuthRequest, res: Response) {
     for (const journal of journals) {
       const ml = journal.ml as {
         score?: number;
+        emotionType?: string;
       } | undefined;
-      const jScore = normalizeJournalScore(ml?.score);
+      const jScore = normalizeJournalScore(ml?.score, ml?.emotionType);
 
       const dateStr = new Date(journal.createdAt).toISOString().slice(0, 10);
       if (!dailyMap[dateStr]) {

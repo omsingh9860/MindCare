@@ -165,7 +165,11 @@ export async function sendAlert(req: AuthRequest, res: Response) {
     `Please reach out to them as soon as you can.\n\n` +
     `This message was triggered by an in-app safety feature.\n`;
 
-  await Promise.all(contacts.map((c) => sendCrisisEmail(c.email, subject, text)));
-
-  return res.json({ message: "Alert sent", sentTo: contacts.map((c) => c.email) });
+  try {
+    await Promise.all(contacts.map((c) => sendCrisisEmail(c.email, subject, text)));
+    return res.json({ message: "Alert sent", sentTo: contacts.map((c) => c.email) });
+  } catch (error) {
+    console.error("[sendAlert] Failed to send crisis emails:", error);
+    return res.status(500).json({ message: "Failed to send alert emails. Please try again." });
+  }
 }

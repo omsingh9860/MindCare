@@ -23,15 +23,27 @@ export type CrisisEmailParams = {
 };
 const EMAIL_USER = process.env.SMTP_USER || process.env.EMAIL_USER ;
 const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS ;
+const SMTP_HOST = process.env.SMTP_HOST;
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
 console.log("SMTP_USER:", process.env.SMTP_USER);
 console.log("EMAIL_USER:", process.env.EMAIL_USER);
-if (!EMAIL_USER || !EMAIL_PASS) {
-  console.warn("[mailer] SMTP credentials missing. Critical alerts will fail.");
+if (!EMAIL_USER || !EMAIL_PASS || !SMTP_HOST) {
+  console.warn("[mailer] SMTP configuration missing. Critical alerts will fail.");
 }
 
 export const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_PORT === 465,
   auth: { user: EMAIL_USER, pass: EMAIL_PASS },
+});
+
+transporter.verify((error) => {
+  if (error) {
+    console.error("[mailer] SMTP connection verification failed:", error);
+    return;
+  }
+  console.log("[mailer] SMTP connection verified.");
 });
 
 /**

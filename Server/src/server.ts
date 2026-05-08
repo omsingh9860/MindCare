@@ -1,6 +1,8 @@
+
 import dotenv from "dotenv";
 dotenv.config();
-
+console.log("SMTP_USER NOW:", process.env.SMTP_USER);
+console.log("CWD:", process.cwd());
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";

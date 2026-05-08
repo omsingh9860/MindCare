@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-
+import "dotenv/config";
 export type CrisisEmailParams = {
   userName: string;
   triggeredAt: Date | string | number;
@@ -7,17 +7,17 @@ export type CrisisEmailParams = {
   delaySeconds: number;
   locationLink?: string; // Optional: Google Maps link or similar
 };
-
-const emailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-const emailPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
-
-if (!emailUser || !emailPass) {
+const EMAIL_USER = process.env.SMTP_USER || process.env.EMAIL_USER ;
+const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS ;
+console.log("SMTP_USER:", process.env.SMTP_USER);
+console.log("EMAIL_USER:", process.env.EMAIL_USER);
+if (!EMAIL_USER || !EMAIL_PASS) {
   console.warn("[mailer] SMTP credentials missing. Critical alerts will fail.");
 }
 
 export const transporter = nodemailer.createTransport({
   service: "gmail",
-  auth: { user: emailUser, pass: emailPass },
+  auth: { user: EMAIL_USER, pass: EMAIL_PASS },
 });
 
 /**
@@ -156,11 +156,11 @@ export async function sendCrisisEmail(
   paramsOrSubject: CrisisEmailParams | string,
   maybeText?: string
 ) {
-  if (!emailUser || !emailPass) throw new Error("SMTP credentials not configured.");
+  if (!EMAIL_USER || !EMAIL_PASS) throw new Error("SMTP credentials not configured.");
 
   if (typeof paramsOrSubject === "string") {
     return await transporter.sendMail({
-      from: `"MindCare Safety" <${emailUser}>`,
+      from: `"MindCare Safety" <${EMAIL_USER}>`,
       to,
       subject: paramsOrSubject,
       text: maybeText || "",
@@ -169,7 +169,7 @@ export async function sendCrisisEmail(
 
   const params = paramsOrSubject;
   return await transporter.sendMail({
-    from: `"MindCare Safety" <${emailUser}>`,
+    from: `"MindCare Safety" <${EMAIL_USER}>`,
     to,
     subject: buildCrisisAlertEmailSubject(params.userName),
     text: buildCrisisAlertEmailText(params),

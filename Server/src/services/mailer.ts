@@ -34,6 +34,7 @@ export const transporter = nodemailer.createTransport({
   auth: { user: EMAIL_USER, pass: EMAIL_PASS },
 });
 
+
 /**
  * Text-Only: Structured as a formal Incident Report
  */

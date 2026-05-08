@@ -169,3 +169,4 @@ export async function sendAlert(req: AuthRequest, res: Response) {
 
   return res.json({ message: "Alert sent", sentTo: contacts.map((c) => c.email) });
 }
+

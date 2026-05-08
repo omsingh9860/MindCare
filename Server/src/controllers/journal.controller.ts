@@ -59,7 +59,12 @@ export async function createEntry(req: AuthRequest, res: Response) {
 
     // Fire and forget — Auto-trigger crisis alert if high-risk content detected
     if (risk.riskLevel === "high") {
-      startAutoAlertForHighRisk(req.userId, entry.title).catch((err) =>
+      startAutoAlertForHighRisk(
+        req.userId,
+        entry.title,
+        entry.content,
+        risk.reasons
+      ).catch((err) =>
         console.error("[Journal] Crisis alert auto-trigger failed:", err)
       );
     }

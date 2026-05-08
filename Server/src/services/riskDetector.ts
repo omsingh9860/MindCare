@@ -23,7 +23,10 @@ const HIGH_PATTERNS: Array<{ phrase: string; regex: RegExp }> = [
     phrase: "suicide",
     regex: /\b(?:suicid(?:e|al|ality)|suicde|sucide|suiside)\b/i,
   },
-  { phrase: "die/death", regex: /\b(?:die|dying|dead|death)\b/i },
+  {
+    phrase: "die/death",
+    regex: /\b(?:(?:i|im|i'm|me|myself)\s*(?:want\s*to|wanna|need\s*to)?\s*(?:die|dying|be\s*dead)|my\s*death)\b/i,
+  },
   {
     phrase: "end my life",
     regex: /\b(?:end\s*(?:my\s*)?life|end\s*it\s*all|end\s*it|take\s*my\s*life)\b/i,
@@ -51,10 +54,19 @@ const HIGH_PATTERNS: Array<{ phrase: string; regex: RegExp }> = [
     phrase: "self harm",
     regex: /\bself(?:\s|-)?harm(?:ing)?\b/i,
   },
-  { phrase: "hang", regex: /\b(?:hang|hanging)\b/i },
-  { phrase: "poison", regex: /\b(?:poison|poisoning)\b/i },
-  { phrase: "overdose", regex: /\b(?:overdose|od)\b/i },
-  { phrase: "jump off", regex: /\bjump\s*(?:off|from)\b/i },
+  { phrase: "hang", regex: /\b(?:hang|hanging)\s*(?:myself|me)\b/i },
+  {
+    phrase: "poison",
+    regex: /\b(?:poison|poisoning)\s*(?:myself|me)|\b(?:drink|drank|taking)\s*poison\b/i,
+  },
+  {
+    phrase: "overdose",
+    regex: /\b(?:overdose|od)\s*(?:myself|me|on|with)\b|\b(?:i|im|i'm)\s*(?:might|will|wanna|want\s*to)?\s*od\b/i,
+  },
+  {
+    phrase: "jump off",
+    regex: /\bjump\s*(?:off|from)\s*(?:a|the)?\s*(?:bridge|building|roof|balcony|cliff|ledge)\b/i,
+  },
   { phrase: "i can't go on", regex: /\bi\s*can(?:'|’)?t\s*go\s*on\b/i },
   { phrase: "hopeless", regex: /\bhopeless\b/i },
   { phrase: "i want to disappear", regex: /\bi\s*want\s*to\s*disappear\b/i },

@@ -25,6 +25,7 @@ import leaderboardRoutes from "./routes/leaderboard.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 
 const app = express();
+app.set("trust proxy", 1);
 
 app.use(
   cors({

@@ -25,7 +25,7 @@ const HIGH_PATTERNS: Array<{ phrase: string; regex: RegExp }> = [
   },
   {
     phrase: "die/death",
-    regex: /\b(?:(?:i|im|i'm)\s*(?:want\s*to|wanna|need\s*to|wish\s*to|might|will)\s*(?:die|be\s*dead)|(?:i|im|i'm)\s*am\s*dying|my\s*death)\b/i,
+    regex: /\b(?:(?:i|im|i['’]?m)\s*(?:want\s*to|wanna|need\s*to|wish\s*to|might|will)\s*(?:die|be\s*dead)|(?:i|im|i['’]?m)\s*(?:am\s*)?dying|my\s*death)\b/i,
   },
   {
     phrase: "end my life",
@@ -61,7 +61,7 @@ const HIGH_PATTERNS: Array<{ phrase: string; regex: RegExp }> = [
   },
   {
     phrase: "overdose",
-    regex: /\boverdose\b|\bod\s*(?:myself|me|on|with)\b|\b(?:i|im|i'm)\s*(?:might|may|will|wanna|want\s*to|plan\s*to)\s*od\b/i,
+    regex: /\boverdose\b|\bod\s+(?:myself|me|on|with)\b|\b(?:i|im|i['’]?m)\s*(?:might|may|will|wanna|want\s*to|plan\s*to)\s*od\b/i,
   },
   {
     phrase: "jump off",

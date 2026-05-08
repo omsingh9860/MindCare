@@ -1,5 +1,14 @@
 import nodemailer from "nodemailer";
 
+const JOURNAL_SNIPPET_MAX_LENGTH = 220;
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
 export type CrisisEmailParams = {
   userName: string;
   triggeredAt: Date | string | number;
@@ -46,7 +55,7 @@ export function buildCrisisAlertEmailText(params: CrisisEmailParams): string {
       : "Safety Delay:   Immediate alert (0 seconds)",
     params.locationLink ? `Last Location:  ${params.locationLink}` : "",
     params.journalSnippet
-      ? `Journal Snippet: ${params.journalSnippet.slice(0, 220)}`
+      ? `Journal Snippet: ${params.journalSnippet.slice(0, JOURNAL_SNIPPET_MAX_LENGTH)}`
       : "",
     "",
     "NOTIFICATION DETAILS:",
@@ -76,9 +85,8 @@ export function buildCrisisAlertEmailHtml(params: CrisisEmailParams): string {
     timeStyle: "short",
   });
 
-  const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (m) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[m] || m));
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (m) => HTML_ESCAPE_MAP[m] || m);
   const safeName = escapeHtml(params.userName);
   const matched = params.riskPhrases?.length
     ? params.riskPhrases
@@ -89,7 +97,7 @@ export function buildCrisisAlertEmailHtml(params: CrisisEmailParams): string {
         .join(" ")
     : "";
   const safeSnippet = params.journalSnippet
-    ? escapeHtml(params.journalSnippet.slice(0, 220))
+    ? escapeHtml(params.journalSnippet.slice(0, JOURNAL_SNIPPET_MAX_LENGTH))
     : "";
 
   return `<!DOCTYPE html>

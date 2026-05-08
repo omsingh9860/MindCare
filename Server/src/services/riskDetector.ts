@@ -75,12 +75,12 @@ const HIGH_PATTERNS: Array<{ phrase: string; regex: RegExp }> = [
 function normalizeForRiskScan(text: string): string {
   return (text || "")
     .toLowerCase()
-    .replace(/[0]/g, "o")
+    .replace(/0/g, "o")
     .replace(/[1!|]/g, "i")
-    .replace(/[3]/g, "e")
+    .replace(/3/g, "e")
     .replace(/[4@]/g, "a")
     .replace(/[5$]/g, "s")
-    .replace(/[7]/g, "t")
+    .replace(/7/g, "t")
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();

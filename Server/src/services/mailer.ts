@@ -1,11 +1,25 @@
 import nodemailer from "nodemailer";
+
 import "dotenv/config";
+
+
+const JOURNAL_SNIPPET_MAX_LENGTH = 220;
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+
 export type CrisisEmailParams = {
   userName: string;
   triggeredAt: Date | string | number;
   timezone?: string;
   delaySeconds: number;
   locationLink?: string; // Optional: Google Maps link or similar
+  riskPhrases?: string[];
+  journalSnippet?: string;
 };
 const EMAIL_USER = process.env.SMTP_USER || process.env.EMAIL_USER ;
 const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS ;
@@ -26,6 +40,10 @@ export const transporter = nodemailer.createTransport({
 export function buildCrisisAlertEmailText(params: CrisisEmailParams): string {
   const tz = params.timezone || "local time";
   const when = new Date(params.triggeredAt).toLocaleString();
+  const matched = params.riskPhrases?.join(", ");
+  const reasonLine = matched
+    ? `Trigger:        High-risk journal content detected (${matched})`
+    : "Trigger:        Safety check-in unresolved";
 
   return [
     "MINDCARE SAFETY NETWORK: PRIORITY ALERT",
@@ -34,11 +52,19 @@ export function buildCrisisAlertEmailText(params: CrisisEmailParams): string {
     `Subject User:   ${params.userName}`,
     `Alert Type:     Crisis Response Triggered`,
     `Timestamp:      ${when} (${tz})`,
-    `Safety Delay:   ${params.delaySeconds} seconds (Unresolved)`,
+    reasonLine,
+    params.delaySeconds > 0
+      ? `Safety Delay:   ${params.delaySeconds} seconds (Unresolved)`
+      : "Safety Delay:   Immediate alert (0 seconds)",
     params.locationLink ? `Last Location:  ${params.locationLink}` : "",
+    params.journalSnippet
+      ? `Journal Snippet: ${params.journalSnippet.slice(0, JOURNAL_SNIPPET_MAX_LENGTH)}`
+      : "",
     "",
     "NOTIFICATION DETAILS:",
-    "This automated transmission was initiated because the subject user did not respond to a safety check-in within the allotted time. As a designated Trusted Contact, your immediate intervention is required.",
+    matched
+      ? "This automated transmission was initiated immediately after MindCare detected high-risk language in a journal entry. As a designated Trusted Contact, your immediate intervention is required."
+      : "This automated transmission was initiated because the subject user did not respond to a safety check-in within the allotted time. As a designated Trusted Contact, your immediate intervention is required.",
     "",
     "PROTOCOL FOR CONTACTS:",
     "1. ATTEMPT VERIFICATION: Call the user immediately. If they answer, verify their safety and stay on the line.",
@@ -62,9 +88,20 @@ export function buildCrisisAlertEmailHtml(params: CrisisEmailParams): string {
     timeStyle: "short",
   });
 
-  const safeName = params.userName.replace(/[&<>"']/g, (m) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  }[m] || m));
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (m) => HTML_ESCAPE_MAP[m] || m);
+  const safeName = escapeHtml(params.userName);
+  const matched = params.riskPhrases?.length
+    ? params.riskPhrases
+        .map(
+          (phrase) =>
+            `<code style="background:#fee2e2;padding:2px 6px;border-radius:4px;">${escapeHtml(phrase)}</code>`
+        )
+        .join(" ")
+    : "";
+  const safeSnippet = params.journalSnippet
+    ? escapeHtml(params.journalSnippet.slice(0, JOURNAL_SNIPPET_MAX_LENGTH))
+    : "";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -101,10 +138,28 @@ export function buildCrisisAlertEmailHtml(params: CrisisEmailParams): string {
                   </tr>
                   <tr>
                     <td><strong>Safety Delay:</strong></td>
-                    <td style="color:#111827;">${params.delaySeconds}s (Expired without response)</td>
+                    <td style="color:#111827;">${params.delaySeconds > 0 ? `${params.delaySeconds}s (Expired without response)` : "Immediate alert (0s delay)"}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Trigger:</strong></td>
+                    <td style="color:#111827;">${matched ? "High-risk journal language detected" : "Safety check-in unresolved"}</td>
                   </tr>
                 </table>
               </div>
+
+              ${matched ? `
+              <div style="margin:20px 0; font-size:14px; color:#111827;">
+                <strong>Matched Risk Phrase(s):</strong><br/>
+                <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">${matched}</div>
+              </div>` : ''}
+
+              ${safeSnippet ? `
+              <div style="margin:20px 0; font-size:14px; color:#111827;">
+                <strong>Journal Snippet:</strong>
+                <div style="margin-top:8px; background:#f9fafb; border:1px solid #e5e7eb; padding:12px; border-radius:6px; font-style:italic;">
+                  "${safeSnippet}"
+                </div>
+              </div>` : ''}
 
               <h3 style="font-size:16px; color:#111827; margin:30px 0 15px; border-bottom:1px solid #e5e7eb; padding-bottom:10px;">Required Response Protocol</h3>
               <table width="100%" cellpadding="0" cellspacing="0">
@@ -128,7 +183,7 @@ export function buildCrisisAlertEmailHtml(params: CrisisEmailParams): string {
               </div>` : ''}
 
               <div style="margin-top:40px; padding-top:20px; border-top:1px solid #f3f4f6; font-size:12px; color:#6b7280; line-height:1.5;">
-                <p><strong>About this alert:</strong> MindCare monitoring systems detected behavioral or input patterns indicative of a crisis. This notification is dispatched when a user fails to acknowledge a safety check-in prompt within the pre-configured window.</p>
+                <p><strong>About this alert:</strong> MindCare monitoring systems detected behavioral or input patterns indicative of a crisis.${matched ? " This notification was dispatched immediately after high-risk journal language was detected." : " This notification was dispatched when a user failed to acknowledge a safety check-in prompt within the pre-configured window."}</p>
                 <p style="margin-bottom:0;">MindCare does not provide direct emergency dispatch. If this is an emergency, contact authorities immediately.</p>
               </div>
             </td>

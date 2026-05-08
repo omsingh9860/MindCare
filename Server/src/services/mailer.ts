@@ -89,7 +89,7 @@ export function buildCrisisAlertEmailHtml(params: CrisisEmailParams): string {
         .join(" ")
     : "";
   const safeSnippet = params.journalSnippet
-    ? escapeHtml(params.journalSnippet.slice(0, 260))
+    ? escapeHtml(params.journalSnippet.slice(0, 220))
     : "";
 
   return `<!DOCTYPE html>

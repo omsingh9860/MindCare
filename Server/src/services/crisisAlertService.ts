@@ -1,6 +1,23 @@
 import mongoose from "mongoose";
 import { TrustedContact } from "../models/TrustedContact.js";
-import { sendCrisisEmail } from "./mailer.js";
+import { sendCrisisEmail, type CrisisEmailParams } from "./mailer.js";
+
+async function sendWithRetry(email: string, payload: CrisisEmailParams, retries = 2) {
+  for (let attempt = 1; attempt <= retries + 1; attempt++) {
+    try {
+      return await sendCrisisEmail(email, payload);
+    } catch (err) {
+      console.error(`[CrisisAlert] Email send attempt ${attempt} failed`, {
+        to: email,
+        error: err instanceof Error ? err.message : String(err),
+      });
+
+      if (attempt > retries) throw err;
+
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+  }
+}
 
 export async function startAutoAlertForHighRisk(
   userId: string,
@@ -27,24 +44,35 @@ export async function startAutoAlertForHighRisk(
       return;
     }
 
-    const emailPromises = contacts.map((contact) =>
-      sendCrisisEmail(contact.email, {
-        userName: "A MindCare user",
-        triggeredAt,
-        timezone: "IST",
-        delaySeconds: 0,
-        riskPhrases: matchedRiskPhrases,
-        journalSnippet,
-      })
-    );
+    console.log("[CrisisAlert] High-risk alert triggered.", {
+      userId,
+      entryTitle,
+      matchedRiskPhrases,
+      contacts: contacts.length,
+      triggeredAt: triggeredAt.toISOString(),
+    });
 
-    await Promise.all(emailPromises);
+    const payload: CrisisEmailParams = {
+      userName: "A MindCare user",
+      triggeredAt,
+      timezone: "IST",
+      delaySeconds: 0,
+      riskPhrases: matchedRiskPhrases,
+      journalSnippet,
+    };
+
+    await Promise.all(contacts.map((contact) => sendWithRetry(contact.email, payload)));
 
     console.log("[CrisisAlert] High-risk alert email dispatch completed.", {
       userId,
       contacts: contacts.length,
     });
   } catch (error) {
-    console.error("[CrisisAlert] Failed to trigger high-risk auto-alert.", error);
+    console.error("[CrisisAlert] Failed to trigger high-risk auto-alert.", {
+      userId,
+      entryTitle,
+      matchedRiskPhrases,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }

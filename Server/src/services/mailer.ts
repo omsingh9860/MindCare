@@ -26,18 +26,16 @@ const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS ;
 if (!EMAIL_USER || !EMAIL_PASS) {
   console.warn("[mailer] SMTP credentials missing. Critical alerts will fail.");
 }
-
 export const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000,
 });
-
 
 /**
  * Text-Only: Structured as a formal Incident Report

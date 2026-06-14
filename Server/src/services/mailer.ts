@@ -23,8 +23,6 @@ export type CrisisEmailParams = {
 };
 const EMAIL_USER = process.env.SMTP_USER || process.env.EMAIL_USER ;
 const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS ;
-console.log("SMTP_USER:", process.env.SMTP_USER);
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
 if (!EMAIL_USER || !EMAIL_PASS) {
   console.warn("[mailer] SMTP credentials missing. Critical alerts will fail.");
 }

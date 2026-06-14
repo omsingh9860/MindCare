@@ -1,9 +1,8 @@
 
 import dotenv from "dotenv";
 dotenv.config();
-console.log("SMTP_USER NOW:", process.env.SMTP_USER);
-console.log("CWD:", process.cwd());
 import express from "express";
+import type { NextFunction, Request, Response } from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 
@@ -26,14 +25,38 @@ import analyticsRoutes from "./routes/analytics.routes.js";
 
 const app = express();
 
+const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || "*",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS policy violation"));
+    },
     credentials: true,
   })
 );
 
-app.use(express.json());
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-site");
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  next();
+});
+
+app.use(express.json({ limit: "1mb" }));
 
 // General API rate limiter: 200 requests per 15 minutes per IP
 const apiLimiter = rateLimit({
@@ -65,6 +88,13 @@ app.use("/api/crisis", crisisRoutes);
 app.use("/api/achievements", achievementRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
+
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  if (err.message === "CORS policy violation") {
+    return res.status(403).json({ message: "Origin not allowed" });
+  }
+  return res.status(500).json({ message: "Server error" });
+});
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
 

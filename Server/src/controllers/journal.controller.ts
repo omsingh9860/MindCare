@@ -177,8 +177,8 @@ export async function markJournalForAnalysis(req: AuthRequest, res: Response) {
     try {
       const mlText = `${entry.title}\n\n${entry.content}`;
       const result = await predictText(mlText);
-      const updated = await JournalEntry.findByIdAndUpdate(
-        entry._id,
+      const updated = await JournalEntry.findOneAndUpdate(
+        { _id: entry._id, userId: req.userId },
         {
           $set: {
             "ml.status": "completed",
@@ -197,8 +197,8 @@ export async function markJournalForAnalysis(req: AuthRequest, res: Response) {
       );
       return res.json({ message: "Analysis complete", ml: updated?.ml });
     } catch (mlErr: any) {
-      const updated = await JournalEntry.findByIdAndUpdate(
-        entry._id,
+      const updated = await JournalEntry.findOneAndUpdate(
+        { _id: entry._id, userId: req.userId },
         {
           $set: {
             "ml.status": "failed",

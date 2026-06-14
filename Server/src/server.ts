@@ -25,21 +25,46 @@ import analyticsRoutes from "./routes/analytics.routes.js";
 
 const app = express();
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
+// Parse CLIENT_ORIGIN from environment (supports comma-separated list)
+const clientOriginEnv = process.env.CLIENT_ORIGIN || "";
+const envOrigins = clientOriginEnv
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+// Hardcoded production origins + env origins for failsafe
+const allowedOrigins = [
+  ...envOrigins,
+  "https://mind-care-coral.vercel.app",
+  "https://mind-care-cje6for17-om-singhs-projects-f2d61cbf.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+
+// Remove duplicates
+const uniqueOrigins = [...new Set(allowedOrigins)];
+
+console.log("✓ CORS allowed origins:", uniqueOrigins);
+
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or Postman)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      
+      // Check if origin is in allowed list
+      if (uniqueOrigins.includes(origin)) {
         return callback(null, true);
       }
+      
+      console.warn(`⚠ CORS blocked origin: ${origin}`);
       return callback(new Error("CORS policy violation"));
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    maxAge: 86400, // 24 hours
   })
 );
 
@@ -58,10 +83,10 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: "1mb" }));
 
-// General API rate limiter: 200 requests per 15 minutes per IP
+// General API rate limiter: 2000 requests per 15 minutes per IP
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." },
@@ -89,10 +114,12 @@ app.use("/api/achievements", achievementRoutes);
 app.use("/api/leaderboard", leaderboardRoutes);
 app.use("/api/analytics", analyticsRoutes);
 
+// Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   if (err.message === "CORS policy violation") {
     return res.status(403).json({ message: "Origin not allowed" });
   }
+  console.error("Server error:", err);
   return res.status(500).json({ message: "Server error" });
 });
 
@@ -101,9 +128,9 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
 connectDB()
   .then(() => {
     startCrisisAlertWorker();
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    app.listen(PORT, () => console.log(`✓ Server running on port ${PORT}`));
   })
   .catch((err) => {
-    console.error("DB connection failed:", err);
+    console.error("✗ DB connection failed:", err);
     process.exit(1);
   });

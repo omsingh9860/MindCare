@@ -16,9 +16,20 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const csrfToken = readCookie("csrfToken");
-  if (csrfToken && config.method && !["get", "head", "options"].includes(config.method.toLowerCase())) {
+
+  console.log("CSRF from cookie:", csrfToken);
+  console.log("Method:", config.method);
+  console.log("URL:", config.url);
+  console.log("Cookies:", document.cookie);
+
+  if (
+    csrfToken &&
+    config.method &&
+    !["get", "head", "options"].includes(config.method.toLowerCase())
+  ) {
     config.headers["x-csrf-token"] = csrfToken;
   }
+
   return config;
 });
 

@@ -56,23 +56,27 @@ function decodeJwtExpiry(token: string) {
 }
 
 function getCookieOptions() {
-  const secure = process.env.NODE_ENV === "production";
+  const isProduction = process.env.NODE_ENV === "production";
+
   return {
     httpOnly: true,
-    secure,
-    sameSite: "strict" as const,
+    secure: isProduction,
+    sameSite: isProduction ? "none" as const : "lax" as const,
     path: "/",
   };
 }
 
 function setCsrfCookie(res: Response) {
+  const isProduction = process.env.NODE_ENV === "production";
   const csrfToken = crypto.randomBytes(24).toString("hex");
+
   res.cookie("csrfToken", csrfToken, {
     httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProduction,
+    sameSite: isProduction ? "none" as const : "lax" as const,
     path: "/",
   });
+
   return csrfToken;
 }
 

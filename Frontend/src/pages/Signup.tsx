@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,16 +6,31 @@ import { Label } from "@/components/ui/label";
 import { Brain, Mail, Lock, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { signup as apiSignup } from "@/lib/auth";
-import { useAuth } from "@/context/AuthContext";
+
+const PASSWORD_REQUIREMENTS = [
+  { label: "At least 10 characters", test: (value: string) => value.length >= 10 },
+  { label: "One uppercase letter", test: (value: string) => /[A-Z]/.test(value) },
+  { label: "One lowercase letter", test: (value: string) => /[a-z]/.test(value) },
+  { label: "One number", test: (value: string) => /\d/.test(value) },
+  { label: "One special character", test: (value: string) => /[^A-Za-z0-9]/.test(value) },
+];
 
 const Signup = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
   const nav = useNavigate();
-  const { refresh } = useAuth();
+
+  const passwordChecks = useMemo(
+    () => PASSWORD_REQUIREMENTS.map((requirement) => ({ ...requirement, ok: requirement.test(password) })),
+    [password]
+  );
+
+  const strengthScore = passwordChecks.filter((check) => check.ok).length;
+  const strengthLabel = ["Very weak", "Weak", "Fair", "Good", "Strong", "Excellent"][strengthScore];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,17 +53,28 @@ const Signup = () => {
       return;
     }
 
+    if (strengthScore < PASSWORD_REQUIREMENTS.length) {
+      toast({
+        title: "Weak password",
+        description: "Please satisfy all password requirements",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSubmitting(true);
     try {
-      await apiSignup(name, email, password); // stores token
-      await refresh(); // fetches /me and sets user
-      toast({ title: "Success", description: "Account created successfully" });
-      nav("/dashboard", { replace: true });
+      const result = await apiSignup(name, email, password);
+      toast({ title: "Success", description: result.message || "Please verify your email to continue" });
+      nav("/login", { replace: true });
     } catch (err: any) {
       toast({
         title: "Signup failed",
         description: err?.response?.data?.message || "Something went wrong",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -63,9 +89,7 @@ const Signup = () => {
         <div className="glass-card p-8 rounded-2xl">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold mb-2">Create Account</h1>
-            <p className="text-muted-foreground">
-              Start your wellness journey today
-            </p>
+            <p className="text-muted-foreground">Start your wellness journey today</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -115,6 +139,19 @@ const Signup = () => {
                   required
                 />
               </div>
+              <div className="rounded-md border border-border p-3 text-xs space-y-1">
+                <p className="font-medium">Password strength: {strengthLabel}</p>
+                <div className="h-2 rounded bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${(strengthScore / 5) * 100}%` }} />
+                </div>
+                <ul className="space-y-1 text-muted-foreground">
+                  {passwordChecks.map((check) => (
+                    <li key={check.label} className={check.ok ? "text-green-600" : ""}>
+                      {check.ok ? "✓" : "•"} {check.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -133,19 +170,14 @@ const Signup = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 py-6">
-              Create Account
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 py-6" disabled={submitting}>
+              {submitting ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">
-              Already have an account?{" "}
-            </span>
-            <Link
-              to="/login"
-              className="text-primary hover:text-accent smooth-transition font-medium"
-            >
+            <span className="text-muted-foreground">Already have an account? </span>
+            <Link to="/login" className="text-primary hover:text-accent smooth-transition font-medium">
               Sign in
             </Link>
           </div>

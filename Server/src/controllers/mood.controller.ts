@@ -137,8 +137,8 @@ export async function markMoodForAnalysis(req: AuthRequest, res: Response) {
         .join("\n");
       const mlText = `Mood check-in\n${answersText}\n\nNotes: ${doc.notes || ""}`;
       const result = await predictText(mlText);
-      const updated = await MoodAssessment.findByIdAndUpdate(
-        doc._id,
+      const updated = await MoodAssessment.findOneAndUpdate(
+        { _id: doc._id, userId: req.userId },
         {
           $set: {
             "ml.status": "completed",
@@ -157,8 +157,8 @@ export async function markMoodForAnalysis(req: AuthRequest, res: Response) {
       );
       return res.json({ message: "Analysis complete", ml: updated?.ml });
     } catch (mlErr: any) {
-      const updated = await MoodAssessment.findByIdAndUpdate(
-        doc._id,
+      const updated = await MoodAssessment.findOneAndUpdate(
+        { _id: doc._id, userId: req.userId },
         {
           $set: {
             "ml.status": "failed",

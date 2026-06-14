@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "../lib/auth";
-import { getMe, logout as doLogout } from "../lib/auth";
+import { getMe, logout as doLogout, refreshSession } from "../lib/auth";
 
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
   refresh: () => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -16,27 +16,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   async function refresh() {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     try {
       const me = await getMe();
       setUser(me);
     } catch {
-      // token invalid/expired
-      doLogout();
-      setUser(null);
+      try {
+        const me = await refreshSession();
+        setUser(me);
+      } catch {
+        await doLogout();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  function logout() {
-    doLogout();
+  async function logout() {
+    await doLogout();
     setUser(null);
   }
 

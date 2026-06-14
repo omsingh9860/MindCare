@@ -9,11 +9,21 @@ export async function signup(name: string, email: string, password: string) {
 
 export async function login(email: string, password: string, rememberMe: boolean) {
   const res = await api.post("/api/auth/login", { email, password, rememberMe });
-  return res.data.user as User;
+
+  if (res.data?.csrfToken) {
+    localStorage.setItem("csrfToken", res.data.csrfToken);
+  }
+
+  return res.data;
 }
 
 export async function verifyEmail(token: string) {
   const res = await api.post("/api/auth/verify-email", { token });
+
+  if (res.data?.csrfToken) {
+    localStorage.setItem("csrfToken", res.data.csrfToken);
+  }
+
   return res.data.user as User;
 }
 
@@ -39,9 +49,15 @@ export async function getMe() {
 
 export async function refreshSession() {
   const res = await api.post("/api/auth/refresh");
+
+  if (res.data?.csrfToken) {
+    localStorage.setItem("csrfToken", res.data.csrfToken);
+  }
+
   return res.data.user as User;
 }
 
 export async function logout() {
   await api.post("/api/auth/logout");
+  localStorage.removeItem("csrfToken");
 }

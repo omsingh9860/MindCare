@@ -1,13 +1,13 @@
 import axios from "axios";
 
-function readCookie(name: string) {
-  const prefixed = `${name}=`;
-  const cookie = document.cookie
-    .split(";")
-    .map((x) => x.trim())
-    .find((x) => x.startsWith(prefixed));
-  return cookie ? decodeURIComponent(cookie.slice(prefixed.length)) : null;
-}
+// function readCookie(name: string) {
+//   const prefixed = `${name}=`;
+//   const cookie = document.cookie
+//     .split(";")
+//     .map((x) => x.trim())
+//     .find((x) => x.startsWith(prefixed));
+//   return cookie ? decodeURIComponent(cookie.slice(prefixed.length)) : null;
+// }
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -15,12 +15,9 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const csrfToken = readCookie("csrfToken");
+  const csrfToken = localStorage.getItem("csrfToken");
 
-  console.log("CSRF from cookie:", csrfToken);
-  console.log("Method:", config.method);
-  console.log("URL:", config.url);
-  console.log("Cookies:", document.cookie);
+  console.log("CSRF from localStorage:", csrfToken);
 
   if (
     csrfToken &&
@@ -54,9 +51,16 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
       if (!refreshingPromise) {
-        refreshingPromise = api.post("/api/auth/refresh").then(() => undefined).finally(() => {
-          refreshingPromise = null;
-        });
+        refreshingPromise = api
+  .post("/api/auth/refresh")
+  .then((res) => {
+    if (res.data?.csrfToken) {
+      localStorage.setItem("csrfToken", res.data.csrfToken);
+    }
+  })
+  .finally(() => {
+    refreshingPromise = null;
+  });
       }
 
       await refreshingPromise;

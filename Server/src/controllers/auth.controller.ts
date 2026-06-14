@@ -56,24 +56,21 @@ function decodeJwtExpiry(token: string) {
 }
 
 function getCookieOptions() {
-  const isProduction = process.env.NODE_ENV === "production";
-
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" as const : "lax" as const,
+    secure: true,
+    sameSite: "none" as const,
     path: "/",
   };
 }
 
 function setCsrfCookie(res: Response) {
-  const isProduction = process.env.NODE_ENV === "production";
   const csrfToken = crypto.randomBytes(24).toString("hex");
 
   res.cookie("csrfToken", csrfToken, {
     httpOnly: false,
-    secure: isProduction,
-    sameSite: isProduction ? "none" as const : "lax" as const,
+    secure: true,
+    sameSite: "none" as const,
     path: "/",
   });
 
@@ -97,11 +94,11 @@ function clearAuthCookies(res: Response) {
   res.clearCookie("accessToken", options);
   res.clearCookie("refreshToken", options);
   res.clearCookie("csrfToken", {
-    httpOnly: false,
-    secure: options.secure,
-    sameSite: "strict",
-    path: "/",
-  });
+  httpOnly: false,
+  secure: true,
+  sameSite: "none",
+  path: "/",
+});
 }
 
 async function sendAuthEmail(to: string, subject: string, text: string, html?: string) {

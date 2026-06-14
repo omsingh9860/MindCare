@@ -29,7 +29,13 @@ if (!EMAIL_USER || !EMAIL_PASS) {
 
 export const transporter = nodemailer.createTransport({
   service: "gmail",
-  auth: { user: EMAIL_USER, pass: EMAIL_PASS },
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
+  },
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
 });
 
 

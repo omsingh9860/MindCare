@@ -109,8 +109,7 @@ export async function getDashboardSummary(req: AuthRequest, res: Response) {
         userId: req.userId,
         createdAt: { $gte: fourteenDaysAgo },
       })
-        .sort({ createdAt: -1 })
-        .select("answers createdAt"),
+        .sort({ createdAt: -1 }).select("answers notes ml createdAt"),
       JournalEntry.find({
         userId: req.userId,
         createdAt: { $gte: fourteenDaysAgo },
@@ -128,8 +127,21 @@ export async function getDashboardSummary(req: AuthRequest, res: Response) {
 
     // Aggregate mood test scores by date
     for (const mood of moods) {
-      const moodScore = computeScore(mood.answers as Record<string, string>);
-      if (moodScore === null) continue;
+  let moodScore = computeScore(mood.answers as Record<string, string>);
+
+  const mlScore = (mood as any).ml?.score;
+  if (moodScore === null && typeof mlScore === "number") {
+    moodScore = mlScore > 10 ? Math.round(mlScore / 10) : mlScore;
+  }
+
+  if (moodScore === null && typeof (mood as any).notes === "string") {
+    const match = (mood as any).notes.match(/Wellbeing Score:\s*(\d+)\/100/i);
+    if (match) {
+      moodScore = Math.round(Number(match[1]) / 10);
+    }
+  }
+
+  if (moodScore === null) continue;
 
       const dateStr = new Date(mood.createdAt).toISOString().slice(0, 10);
       if (!dailyMap[dateStr]) {
@@ -169,7 +181,7 @@ export async function getDashboardSummary(req: AuthRequest, res: Response) {
             : null;
 
         // Normalize mood test to 0-10
-        const mtScore = mtAvg !== null ? normalizeMoodTestScore(mtAvg) : null;
+        const mtScore = mtAvg;
 
         // Average journal scores for the day
         const jAvg =

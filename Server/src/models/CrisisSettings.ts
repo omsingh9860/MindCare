@@ -14,7 +14,7 @@ export type CrisisSettingsDoc = mongoose.Document & {
 const CrisisSettingsSchema = new Schema<CrisisSettingsDoc>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, unique: true, index: true },
-    enabled: { type: Boolean, default: false },
+    enabled: { type: Boolean, default: false }, 
     mode: { type: String, enum: ["manual", "auto"], default: "manual" },
     delaySeconds: { type: Number, default: 30, min: 10, max: 300 },
   },

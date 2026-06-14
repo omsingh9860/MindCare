@@ -27,17 +27,18 @@ if (!EMAIL_USER || !EMAIL_PASS) {
   console.warn("[mailer] SMTP credentials missing. Critical alerts will fail.");
 }
 export const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  family: 4,
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
   socketTimeout: 15000,
-});
-
-/**
+} as any);/**
  * Text-Only: Structured as a formal Incident Report
  */
 export function buildCrisisAlertEmailText(params: CrisisEmailParams): string {

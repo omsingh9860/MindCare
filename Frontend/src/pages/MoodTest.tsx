@@ -18,18 +18,35 @@ import {
 type AnswerMap = Record<string, number>; // questionId -> 1..5
 
 function computeWellbeing(questions: MoodQuestion[], answers: AnswerMap) {
-  const answeredCount = questions.filter((q) => answers[q.id] !== undefined).length;
+  // 1. Only calculate based on questions the user ACTUALLY answered
+  const answeredQuestions = questions.filter((q) => answers[q.id] !== undefined);
+  const answeredCount = answeredQuestions.length;
 
-  const totalNormalized = questions.reduce((sum, q) => {
+  if (answeredCount === 0) {
+    return { answeredCount, percent: 0, totalNormalized: 0, max: 0 };
+  }
+
+  // 2. Calculate the Zero-Baseline Score (0 to 4 points per question)
+  const totalScore = answeredQuestions.reduce((sum, q) => {
     const v = answers[q.id];
-    if (v === undefined) return sum;
-    return sum + normalizedScore(v, q.negative);
+    
+    // If negative question: 1 is best (4 pts), 5 is worst (0 pts)
+    // If positive question: 5 is best (4 pts), 1 is worst (0 pts)
+    const score0to4 = q.negative ? (5 - v) : (v - 1);
+    
+    return sum + score0to4;
   }, 0);
 
-  const max = questions.length * 5;
-  const percent = questions.length ? Math.round((totalNormalized / max) * 100) : 0;
+  // 3. Max possible score is now 4 points per answered question
+  const maxPossible = answeredCount * 4; 
+  const percent = Math.round((totalScore / maxPossible) * 100);
 
-  return { answeredCount, percent, totalNormalized, max };
+  return { 
+    answeredCount, 
+    percent, 
+    totalNormalized: totalScore, 
+    max: maxPossible 
+  };
 }
 
 const MoodTest = () => {
@@ -115,7 +132,7 @@ const MoodTest = () => {
             </p>
           </div>
 
-w
+
 
 
           <form onSubmit={handleSubmit} className="space-y-8">

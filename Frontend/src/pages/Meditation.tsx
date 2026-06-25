@@ -2,11 +2,13 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Clock } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { logMeditation } from "@/lib/meditation";
 import { useNavigate } from "react-router-dom";
 
+// 1. Added placeholder audio URLs to your sessions. 
+// Replace these with links to your actual MP3 files or cloud storage URLs.
 const sessions = [
   {
     id: 1,
@@ -14,6 +16,7 @@ const sessions = [
     duration: "10 min",
     description: "Start your day with calm and focus",
     category: "Morning",
+    audioUrl: "/audio/track1.mp3",
   },
   {
     id: 2,
@@ -21,6 +24,7 @@ const sessions = [
     duration: "15 min",
     description: "Release tension and find peace",
     category: "Stress",
+    audioUrl: "/audio/track2.mp3",
   },
   {
     id: 3,
@@ -28,6 +32,7 @@ const sessions = [
     duration: "20 min",
     description: "Wind down for restful sleep",
     category: "Sleep",
+    audioUrl: "/audio/track3.mp3",
   },
   {
     id: 4,
@@ -35,6 +40,7 @@ const sessions = [
     duration: "12 min",
     description: "Calm your mind and ease worries",
     category: "Anxiety",
+    audioUrl: "/audio/track4.mp3",
   },
   {
     id: 5,
@@ -42,6 +48,7 @@ const sessions = [
     duration: "8 min",
     description: "Refresh and energize your day",
     category: "Energy",
+    audioUrl: "/audio/track5.mp3",
   },
   {
     id: 6,
@@ -49,44 +56,48 @@ const sessions = [
     duration: "25 min",
     description: "Complete body and mind relaxation",
     category: "Relaxation",
+    audioUrl: "/audio/track6.mp3",
   },
 ];
-
-function parseMinutes(duration: string): number {
-  const n = Number(String(duration).replace(/[^\d]/g, ""));
-  return Number.isFinite(n) && n > 0 ? n : 0;
-}
 
 const Meditation = () => {
   const [playing, setPlaying] = useState<number | null>(null);
   const [logging, setLogging] = useState(false);
   const { toast } = useToast();
   const nav = useNavigate();
+  
+  // 2. Added a ref to control the HTML audio element
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleToggle = async (sessionId: number) => {
+    const session = sessions.find((x) => x.id === sessionId);
+    if (!session || !audioRef.current) return;
+
     // Pause/finish current session => log it
     if (playing === sessionId) {
-      const s = sessions.find((x) => x.id === sessionId);
-      if (!s) {
-        setPlaying(null);
-        return;
-      }
+      // 3. Get the EXACT time listened directly from the audio element
+      const listenedSeconds = audioRef.current.currentTime;
+      const listenedMinutes = Math.ceil(listenedSeconds / 60); // Rounds up to give them credit for partial minutes
 
-      const minutes = parseMinutes(s.duration);
-
+      // Pause the audio and reset it
+      audioRef.current.pause();
       setLogging(true);
+
       try {
-        if (minutes > 0) {
-          await logMeditation(s.title, minutes);
+        // Only log to the database if they listened for more than 5 seconds to prevent spam
+        if (listenedSeconds > 5) {
+          await logMeditation(session.title, listenedMinutes);
+          toast({
+            title: "Session logged",
+            description: `Logged ${listenedMinutes} minute(s) of ${session.title}.`,
+          });
+          nav("/dashboard?refresh=1", { replace: true });
+        } else {
+          toast({
+            title: "Session ended",
+            description: "Session was too short to log.",
+          });
         }
-
-        toast({
-          title: "Session logged",
-          description: `${s.title} (${s.duration}) saved to your dashboard.`,
-        });
-
-        // ✅ Go to dashboard and trigger a refetch
-        nav("/dashboard?refresh=1", { replace: true });
       } catch (err: any) {
         toast({
           title: "Could not log session",
@@ -96,12 +107,32 @@ const Meditation = () => {
       } finally {
         setLogging(false);
         setPlaying(null);
+        audioRef.current.currentTime = 0; // Reset audio track
       }
       return;
     }
 
-    // Start a session
+    // Start a new session
+    // If another track was playing, pause it first
+    if (playing !== null) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    // Load the new track and play
     setPlaying(sessionId);
+    audioRef.current.src = session.audioUrl;
+    
+    // Play returns a promise, it's good practice to catch errors (e.g., browser autoplay blocks)
+    audioRef.current.play().catch((error) => {
+      console.error("Audio playback failed:", error);
+      toast({
+        title: "Playback Error",
+        description: "Please click again to allow audio playback.",
+        variant: "destructive",
+      });
+      setPlaying(null);
+    });
   };
 
   return (
@@ -140,7 +171,7 @@ const Meditation = () => {
 
                 <Button
                   onClick={() => handleToggle(session.id)}
-                  disabled={logging}
+                  disabled={logging || (playing !== null && playing !== session.id)} // Prevent starting a new one while logging or playing another
                   className={`w-full ${
                     playing === session.id
                       ? "bg-accent hover:bg-accent/90"
@@ -150,12 +181,12 @@ const Meditation = () => {
                   {playing === session.id ? (
                     <>
                       <Pause className="w-4 h-4 mr-2" />
-                      {logging ? "Logging..." : "Pause"}
+                      {logging ? "Logging..." : "Pause & Log"}
                     </>
                   ) : (
                     <>
                       <Play className="w-4 h-4 mr-2" />
-                      Start Session
+                      {playing !== null ? "Session in progress" : "Start Session"}
                     </>
                   )}
                 </Button>
@@ -164,8 +195,11 @@ const Meditation = () => {
           </div>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
-            Tip: Start a session, then click Pause to log it to your weekly total.
+            Tip: Start a session, then click Pause to log your actual time listened to your weekly total.
           </p>
+          
+          {/* 4. The hidden audio element that handles the actual playback */}
+          <audio ref={audioRef} className="hidden" />
         </div>
       </main>
       <Footer />

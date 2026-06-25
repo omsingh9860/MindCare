@@ -272,15 +272,7 @@ const Login = () => {
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
 
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                disabled={resendingVerification}
-                onClick={handleResendVerification}
-              >
-                {resendingVerification ? "Sending verification..." : "Resend verification email"}
-              </Button>
+              
             </form>
           )}
 

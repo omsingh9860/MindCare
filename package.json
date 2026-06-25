@@ -1,5 +1,8 @@
 {
   "devDependencies": {
     "@types/node": "^25.9.3"
+  },
+  "dependencies": {
+    "@emailjs/nodejs": "^5.0.2"
   }
 }

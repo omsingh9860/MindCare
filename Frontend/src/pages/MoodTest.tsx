@@ -111,42 +111,12 @@ const MoodTest = () => {
               Mood <span className="gradient-text">Assessment</span>
             </h1>
             <p className="text-lg text-muted-foreground">
-              Take a moment to check in with yourself (random 5–10 questions each time)
+              Take a moment to check in with yourself
             </p>
           </div>
 
-          {/* Score Summary */}
-          <div className="glass-card p-6 rounded-xl mb-8 animate-fade-in">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Wellbeing Score</h2>
-                <p className="text-sm text-muted-foreground">
-                  Higher score = better overall wellbeing (stress/sadness/anger questions are auto-inverted)
-                </p>
-              </div>
+w
 
-              <div className="text-right">
-                <div className="text-3xl font-bold">{wellbeing.percent}</div>
-                <div className="text-sm text-muted-foreground">/ 100</div>
-              </div>
-            </div>
-
-            <div className="mt-4 h-2 rounded bg-muted overflow-hidden">
-              <div className="h-2 bg-primary" style={{ width: `${wellbeing.percent}%` }} />
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <Button type="button" variant="outline" onClick={regenerate} disabled={!canRegenerate}>
-                New questions
-              </Button>
-            </div>
-
-            {!canRegenerate && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Tip: You can generate a new set only before answering (to avoid losing answers).
-              </p>
-            )}
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {questions.map((q, index) => (

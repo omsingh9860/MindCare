@@ -1,9 +1,8 @@
-import nodemailer from "nodemailer";
-
+import emailjs from "@emailjs/nodejs";
 import "dotenv/config";
 
-
 const JOURNAL_SNIPPET_MAX_LENGTH = 220;
+
 const HTML_ESCAPE_MAP: Record<string, string> = {
   "&": "&amp;",
   "<": "&lt;",
@@ -17,28 +16,22 @@ export type CrisisEmailParams = {
   triggeredAt: Date | string | number;
   timezone?: string;
   delaySeconds: number;
-  locationLink?: string; // Optional: Google Maps link or similar
+  locationLink?: string;
   riskPhrases?: string[];
   journalSnippet?: string;
 };
-const EMAIL_USER = process.env.SMTP_USER || process.env.EMAIL_USER ;
-const EMAIL_PASS = process.env.SMTP_PASS || process.env.EMAIL_PASS ;
-if (!EMAIL_USER || !EMAIL_PASS) {
-  console.warn("[mailer] SMTP credentials missing. Critical alerts will fail.");
+
+// Pulling EmailJS credentials instead of SMTP credentials
+const SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+const TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
+const PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
+const PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+
+if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY || !PRIVATE_KEY) {
+  console.warn("[mailer] EmailJS credentials missing. Critical alerts will fail.");
 }
-export const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
-} as any);/**
+
+/**
  * Text-Only: Structured as a formal Incident Report
  */
 export function buildCrisisAlertEmailText(params: CrisisEmailParams): string {
@@ -210,28 +203,50 @@ export function buildCrisisAlertEmailSubject(userName: string): string {
   return `ALERT: Safety Verification Required for ${userName}`;
 }
 
+/**
+ * Executes the HTTP call to EmailJS
+ */
 export async function sendCrisisEmail(
   to: string,
   paramsOrSubject: CrisisEmailParams | string,
   maybeText?: string
 ) {
-  if (!EMAIL_USER || !EMAIL_PASS) throw new Error("SMTP credentials not configured.");
-
-  if (typeof paramsOrSubject === "string") {
-    return await transporter.sendMail({
-      from: `"MindCare Safety" <${EMAIL_USER}>`,
-      to,
-      subject: paramsOrSubject,
-      text: maybeText || "",
-    });
+  if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY || !PRIVATE_KEY) {
+    throw new Error("EmailJS credentials not configured.");
   }
 
-  const params = paramsOrSubject;
-  return await transporter.sendMail({
-    from: `"MindCare Safety" <${EMAIL_USER}>`,
-    to,
-    subject: buildCrisisAlertEmailSubject(params.userName),
-    text: buildCrisisAlertEmailText(params),
-    html: buildCrisisAlertEmailHtml(params),
-  });
+  let subject = "";
+  let htmlContent = "";
+
+  if (typeof paramsOrSubject === "string") {
+    subject = paramsOrSubject;
+    htmlContent = `<p>${maybeText || ""}</p>`;
+  } else {
+    const params = paramsOrSubject;
+    subject = buildCrisisAlertEmailSubject(params.userName);
+    htmlContent = buildCrisisAlertEmailHtml(params);
+  }
+
+  // The variables we send up to the EmailJS Template
+  const templateParams = {
+    to_email: to,
+    subject: subject,
+    message_html: htmlContent, 
+  };
+
+  try {
+    const response = await emailjs.send(
+      SERVICE_ID,
+      TEMPLATE_ID,
+      templateParams,
+      {
+        publicKey: PUBLIC_KEY,
+        privateKey: PRIVATE_KEY,
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("[mailer] EmailJS send failed:", error);
+    throw error;
+  }
 }

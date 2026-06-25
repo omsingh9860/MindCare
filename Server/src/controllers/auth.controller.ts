@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
-import { transporter } from "../services/mailer.js";
+import emailjs from "@emailjs/nodejs";
 import { getCookieValue, type AuthRequest } from "../middleware/auth.middleware.js";
 
 const PASSWORD_POLICY_MESSAGE =
@@ -102,9 +102,30 @@ function clearAuthCookies(res: Response) {
 }
 
 async function sendAuthEmail(to: string, subject: string, text: string, html?: string) {
-  const from = process.env.SMTP_USER || process.env.EMAIL_USER;
-  if (!from) throw new Error("SMTP sender not configured");
-  await transporter.sendMail({ from: `\"MindCare\" <${from}>`, to, subject, text, html });
+  const SERVICE_ID = process.env.EMAILJS_SERVICE_ID;
+  const TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID;
+  const PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
+  const PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
+
+  if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY || !PRIVATE_KEY) {
+    console.warn("EmailJS credentials not configured. Auth email skipped.");
+    return;
+  }
+
+  const templateParams = {
+    to_email: to,
+    subject: subject,
+    message_html: html || `<p>${text}</p>`, 
+  };
+
+  try {
+    await emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams, {
+      publicKey: PUBLIC_KEY,
+      privateKey: PRIVATE_KEY,
+    });
+  } catch (error) {
+    console.error("[auth] EmailJS send failed:", error);
+  }
 }
 
 function verificationUrl(req: Request, token: string) {

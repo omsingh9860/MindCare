@@ -23,20 +23,15 @@ import analyticsRoutes from "./routes/analytics.routes.js";
 
 const app = express();
 
-// ==========================================
-// FIX: Trust the Render reverse proxy so the 
-// rate limiter can read the correct user IP!
-// ==========================================
+
 app.set("trust proxy", 1);
 
-// Parse CLIENT_ORIGIN from environment (supports comma-separated list)
 const clientOriginEnv = process.env.CLIENT_ORIGIN || "";
 const envOrigins = clientOriginEnv
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-// Hardcoded production origins + env origins for failsafe
 const allowedOrigins = [
   ...envOrigins,
   "https://mind-care-coral.vercel.app",

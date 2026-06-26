@@ -36,7 +36,9 @@ if (!SERVICE_ID || !TEMPLATE_ID || !PUBLIC_KEY || !PRIVATE_KEY) {
  */
 export function buildCrisisAlertEmailText(params: CrisisEmailParams): string {
   const tz = params.timezone || "local time";
-  const when = new Date(params.triggeredAt).toLocaleString();
+  const when = new Date(params.triggeredAt).toLocaleString("en-IN", { 
+    timeZone: "Asia/Kolkata" 
+  });
   const matched = params.riskPhrases?.join(", ");
   const reasonLine = matched
     ? `Trigger:        High-risk journal content detected (${matched})`
@@ -83,6 +85,7 @@ export function buildCrisisAlertEmailHtml(params: CrisisEmailParams): string {
   const when = new Date(params.triggeredAt).toLocaleString("en-IN", {
     dateStyle: "long",
     timeStyle: "short",
+    timeZone: "Asia/Kolkata",
   });
 
   const escapeHtml = (value: string) =>

@@ -1,4 +1,3 @@
-
 import dotenv from "dotenv";
 dotenv.config();
 import express from "express";
@@ -8,7 +7,6 @@ import rateLimit from "express-rate-limit";
 
 import { connectDB } from "./config/db.js";
 import { startCrisisAlertWorker } from "./workers/crisisAlertWorker.js";
-
 import testEmailRoutes from "./routes/test-email.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import protectedRoutes from "./routes/protected.routes.js";
@@ -24,6 +22,12 @@ import leaderboardRoutes from "./routes/leaderboard.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 
 const app = express();
+
+// ==========================================
+// FIX: Trust the Render reverse proxy so the 
+// rate limiter can read the correct user IP!
+// ==========================================
+app.set("trust proxy", 1);
 
 // Parse CLIENT_ORIGIN from environment (supports comma-separated list)
 const clientOriginEnv = process.env.CLIENT_ORIGIN || "";
@@ -59,6 +63,7 @@ app.use(
       }
       
       console.warn(`⚠ CORS blocked origin: ${origin}`);
+     
       return callback(new Error("CORS policy violation"));
     },
     credentials: true,
@@ -91,6 +96,7 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." },
 });
+
 app.use("/api", apiLimiter);
 
 app.get("/health", (_req, res) => {
